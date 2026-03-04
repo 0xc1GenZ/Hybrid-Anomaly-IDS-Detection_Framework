@@ -1,4 +1,4 @@
-tensorflow==2.15.0
+tensorflow==2.17.0
 scikit-learn==1.4.1
 imbalanced-learn==0.12.0
 shap==0.44.1
