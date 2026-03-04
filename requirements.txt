@@ -1,6 +1,7 @@
 tensorflow==2.17.0
-scikit-learn==1.4.1
+scikit-learn==1.5.2
 imbalanced-learn==0.12.0
-shap==0.44.1
+shap==0.45.0
 pandas==2.2.1
 numpy==1.26.4
+
