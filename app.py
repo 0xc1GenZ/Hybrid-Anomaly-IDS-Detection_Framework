@@ -3,12 +3,40 @@ import pandas as pd
 from src.hybrid_ids import HybridIDS  # Import your model
 from pathlib import Path
 import io  # For handling uploaded files
+import numpy as np
 
 app = Flask(__name__)
 
-# Load trained model (or train on startup – for demo, load pre-trained)
-model = HybridIDS()
-# model.fit(X_train, y_train)  # Uncomment if training on-the-fly
+# Load or train model on startup
+print("Loading/Training model...")
+model_path = Path("models/hybrid_model.h5")
+if model_path.exists():
+    # Load saved model (add model.save/load methods to HybridIDS if needed)
+    print("Loading saved model...")
+    model = HybridIDS.load(model_path)  # Implement this in HybridIDS class
+else:
+    # Train on sample data for demo
+    sample_path = Path("data/sample_flows.csv")
+    if sample_path.exists():
+        df = pd.read_csv(sample_path)
+        X = df.drop('label', axis=1)
+        y = (df['label'] == 'attack').astype(int)
+        model = HybridIDS()
+        model.fit(X, y)
+        print("Model trained on sample data.")
+    else:
+        raise FileNotFoundError("Sample data not found – train model first.")
+
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({
+        'welcome': 'Hybrid IDS API',
+        'endpoints': {
+            'health': '/health (GET)',
+            'predict': '/predict (POST with CSV file)'
+        },
+        'model_status': 'ready'
+    })
 
 @app.route('/predict', methods=['POST'])
 def predict_anomaly():
@@ -28,7 +56,7 @@ def predict_anomaly():
         response = {
             'predictions': preds.tolist(),  # 0=normal, 1=attack
             'flagged_count': int(np.sum(preds > 0.5)),  # Threshold for alerts
-            'shap_summary': shap_vals[0] if shap_vals is not None else None  # Sample SHAP
+            'shap_summary': shap_vals[0].tolist() if shap_vals is not None else None  # Sample SHAP
         }
         return jsonify(response)
     except Exception as e:
