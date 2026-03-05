@@ -10,22 +10,28 @@ app = Flask(__name__)
 # Load or train model on startup
 print("Loading/Training model...")
 model_path = Path("models/hybrid_model.h5")
+project_root = Path(__file__).parent  # Auto-detect project root
+
 if model_path.exists():
-    # Load saved model (add model.save/load methods to HybridIDS if needed)
+    # Load saved model (implement load in HybridIDS if needed)
     print("Loading saved model...")
-    model = HybridIDS.load(model_path)  # Implement this in HybridIDS class
+    model = HybridIDS.load(model_path)  # Add this method to HybridIDS class later
 else:
     # Train on sample data for demo
-    sample_path = Path("data/sample_flows.csv")
+    sample_path = project_root / "data" / "sample_flows.csv"
     if sample_path.exists():
+        print(f"Training on sample data from: {sample_path}")
         df = pd.read_csv(sample_path)
         X = df.drop('label', axis=1)
         y = (df['label'] == 'attack').astype(int)
         model = HybridIDS()
         model.fit(X, y)
         print("Model trained on sample data.")
+        # Save for future runs (add save method to HybridIDS)
+        # model.save(model_path)
     else:
-        raise FileNotFoundError("Sample data not found – train model first.")
+        raise FileNotFoundError(f"❌ Sample data not found at: {sample_path}\n"
+                                f"Run from project root or check file location.")
 
 @app.route('/', methods=['GET'])
 def home():
@@ -35,7 +41,7 @@ def home():
             'health': '/health (GET)',
             'predict': '/predict (POST with CSV file)'
         },
-        'model_status': 'ready'
+        'model_status': 'ready' if 'model' in locals() else 'not_loaded'
     })
 
 @app.route('/predict', methods=['POST'])
