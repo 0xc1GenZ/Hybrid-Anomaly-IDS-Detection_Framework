@@ -1,76 +1,42 @@
 from flask import Flask, request, jsonify
 import pandas as pd
-from src.hybrid_ids import HybridIDS  # Import your model
 from pathlib import Path
-import io  # For handling uploaded files
-import numpy as np
+from src.hybrid_ids import HybridIDS
 
 app = Flask(__name__)
+model = HybridIDS()
 
-# Load or train model on startup
-print("Loading/Training model...")
-model_path = Path("models/hybrid_model.h5")
-project_root = Path(__file__).parent  # Auto-detect project root
+# Load model on startup
+@app.before_first_request
+def load_model():
+    try:
+        model.load()
+        print("✅ Model loaded")
+    except:
+        print("⚠️ Model not found – will train on first request")
 
-if model_path.exists():
-    # Load saved model (implement load in HybridIDS if needed)
-    print("Loading saved model...")
-    model = HybridIDS.load(model_path)  # Add this method to HybridIDS class later
-else:
-    # Train on sample data for demo
-    sample_path = project_root / "data" / "sample_flows.csv"
-    if sample_path.exists():
-        print(f"Training on sample data from: {sample_path}")
-        df = pd.read_csv(sample_path)
-        X = df.drop('label', axis=1)
-        y = (df['label'] == 'attack').astype(int)
-        model = HybridIDS()
-        model.fit(X, y)
-        print("Model trained on sample data.")
-        # Save for future runs (add save method to HybridIDS)
-        # model.save(model_path)
-    else:
-        raise FileNotFoundError(f"❌ Sample data not found at: {sample_path}\n"
-                                f"Run from project root or check file location.")
-
-@app.route('/', methods=['GET'])
+@app.route("/")
 def home():
+    return jsonify({"status": "ok", "message": "Hybrid IDS REST API is running"})
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files["file"]
+    df = pd.read_csv(file)
+    
+    preds, shap_vals = model.predict(df)
+    flagged_count = int((preds > 0.5).sum())
+    
     return jsonify({
-        'welcome': 'Hybrid IDS API',
-        'endpoints': {
-            'health': '/health (GET)',
-            'predict': '/predict (POST with CSV file)'
-        },
-        'model_status': 'ready' if 'model' in locals() else 'not_loaded'
+        "total_flows": len(df),
+        "flagged_anomalies": flagged_count,
+        "flagged_percentage": round(flagged_count / len(df) * 100, 2),
+        "predictions": preds.tolist(),
+        "status": "ALERT" if flagged_count > 0 else "NORMAL"
     })
 
-@app.route('/predict', methods=['POST'])
-def predict_anomaly():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    
-    # Read CSV from upload
-    df = pd.read_csv(io.BytesIO(file.read()))
-    X = df.drop('label', axis=1) if 'label' in df.columns else df  # Handle labeled/unlabeled
-    
-    try:
-        preds, shap_vals = model.predict(X)
-        response = {
-            'predictions': preds.tolist(),  # 0=normal, 1=attack
-            'flagged_count': int(np.sum(preds > 0.5)),  # Threshold for alerts
-            'shap_summary': shap_vals[0].tolist() if shap_vals is not None else None  # Sample SHAP
-        }
-        return jsonify(response)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({'status': 'healthy', 'model_loaded': model.lstm is not None})
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
