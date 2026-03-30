@@ -1,0 +1,2 @@
+*.csv filter=lfs diff=lfs merge=lfs -text
+data/raw/sample_flows/* filter=lfs diff=lfs merge=lfs -text
