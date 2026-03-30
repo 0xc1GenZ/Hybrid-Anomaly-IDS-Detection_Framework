@@ -1,0 +1,13 @@
+[server]
+# Maximum upload size in MB.
+# Default is 200 MB — raised to 5120 MB (5 GB) for large CICIDS/CICIoT CSVs.
+maxUploadSize = 5120
+
+# Keep the connection alive during long model training runs.
+# Default is 60s — large datasets can take several minutes to train.
+maxMessageSize = 5120
+headless = true
+
+[browser]
+# Suppress the "Check for updates" prompt athat blocks the UI on startup.
+gatherUsageStats = false
