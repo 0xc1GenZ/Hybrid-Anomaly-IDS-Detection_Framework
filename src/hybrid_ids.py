@@ -44,6 +44,7 @@ class HybridIDS:
         self.lstm          = LSTMClassifier()
         self.explainer     = SHAPExplainer()
         self.threshold     = None
+        self.ae_p99        = None   # 99th pct of benign AE errors (for normalisation)
         self.is_supervised = True
         self.feature_cols  = None
         self.window_size   = 10   # overridden in fit()
@@ -73,16 +74,49 @@ class HybridIDS:
         if n_clean == 0:
             raise ValueError("No samples survived preprocessing. Check your data.")
 
-        # --- Autoencoder (anomaly scorer) ---
+        # --- Autoencoder (anomaly scorer — trained on BENIGN only) ----------
+        # Training on all data makes AE reconstruct attacks almost as well
+        # as benign, collapsing the reconstruction error gap and making the
+        # threshold useless.  Benign-only training forces AE to specialise
+        # on normal patterns so attack errors are clearly elevated.
         self.autoencoder.build(X_clean.shape[1])
-        self.autoencoder.fit(X_clean)
-        recon_errors   = self.autoencoder.predict(X_clean).mean(axis=1)
-        self.threshold = recon_errors.mean() + 2 * recon_errors.std()
-        print(f"  Autoencoder threshold (mean + 2std): {self.threshold:.4f}")
+        if y_clean is not None and (y_clean == 0).sum() >= 32:
+            X_benign = X_clean[y_clean == 0]
+            print(f"  AE training on benign-only subset: {len(X_benign):,} rows")
+        else:
+            X_benign = X_clean   # unsupervised: use all (no label info)
+            print(f"  AE training on all rows (no labels): {len(X_benign):,} rows")
+        self.autoencoder.fit(X_benign)
+
+        # Threshold: 99th percentile of benign errors.
+        # Now used as an AE boost signal (not a hard gate), since LSTM scores
+        # all rows.  99th pct tightens the benign model further, making attack
+        # AE errors more elevated and the ae_norm signal cleaner.
+        benign_errors   = self.autoencoder.predict(X_benign).mean(axis=1)
+        self.threshold  = float(np.percentile(benign_errors, 99))
+        self.ae_p99     = float(np.percentile(benign_errors, 99))  # same here
+        print(f"  Autoencoder threshold (benign 99th pct): {self.threshold:.6f}")
+
+        # Diagnostic: AE flagging rate on attacks (informational only)
+        if y_clean is not None and (y_clean == 1).sum() > 0:
+            X_attack         = X_clean[y_clean == 1]
+            attack_errors    = self.autoencoder.predict(X_attack).mean(axis=1)
+            ae_attack_flag   = float((attack_errors > self.threshold).mean())
+            ae_attack_mean   = float(attack_errors.mean())
+            benign_mean      = float(benign_errors.mean())
+            print(f"  AE error — benign mean: {benign_mean:.6f}  "
+                  f"attack mean: {ae_attack_mean:.6f}  "
+                  f"separation ratio: {ae_attack_mean/max(benign_mean,1e-9):.2f}×")
+            print(f"  AE attack flag rate (boost coverage): {ae_attack_flag*100:.1f}%")
 
         if self.is_supervised:
-            # --- Balance classes ---
+            # --- Balance classes (SMOTE on full cleaned dataset) ---------------
+            # LSTM now trains on the full balanced dataset, not just AE-flagged
+            # rows. This gives it the complete benign/attack decision boundary.
             X_bal, y_bal = self.preprocessor.balance(X_clean, y_clean)
+            print(f"  Balanced dataset: {len(X_bal):,} rows  "
+                  f"(benign={int((np.asarray(y_bal)==0).sum()):,}  "
+                  f"attack={int((np.asarray(y_bal)==1).sum()):,})")
 
             # --- Adaptive window size ---
             self.window_size      = self._pick_window_size(len(X_bal))
@@ -92,11 +126,16 @@ class HybridIDS:
             X_seq, y_seq = self._reshape_to_sequences(X_bal, y_bal, self.window_size)
             print(f"  LSTM sequences: {len(X_seq):,}  (window={self.window_size})")
 
-            # --- Class weights ---
+            # --- Class weights (extra attack weight to boost recall) -----------
             classes = np.unique(np.asarray(y_bal))
             cw      = compute_class_weight('balanced', classes=classes, y=np.asarray(y_bal))
-            cw_dict = dict(zip(classes.tolist(), cw.tolist()))
-            print(f"  Class weights: {cw_dict}")
+            # Boost attack class weight 2.0× beyond balanced.
+            # With LSTM scoring all rows, missed attacks (FN) are the main error.
+            # 2× recall pressure without destabilising training on large datasets.
+            cw_dict = {int(c): float(w) for c, w in zip(classes, cw)}
+            if 1 in cw_dict:
+                cw_dict[1] *= 2.0
+            print(f"  Class weights (attack 2× boosted): {cw_dict}")
 
             # --- Train LSTM ---
             self.lstm.build(X_seq.shape[2])
