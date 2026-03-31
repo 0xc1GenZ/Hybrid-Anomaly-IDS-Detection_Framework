@@ -1,4 +1,4 @@
-# Hybrid-IDS Framework
+# Hybrid-IDS Framework🛡️
 
 **A Hybrid Deep Learning Framework for Anomaly-Based Intrusion Detection Systems (IDS)**
 
