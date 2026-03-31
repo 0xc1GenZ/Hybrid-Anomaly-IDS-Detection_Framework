@@ -40,7 +40,7 @@ Only Flagged Sequences → SSA-LSTM Classifier
 ↓
 SHAP Explainability → Final Alert + Feature Importance
 
-<img width="404" height="685" alt="High-Level Architecture of the Proposed Hybrid Deep Learning Framework for Anomaly-Based IDS" src="https://github.com/user-attachments/assets/0761ff75-7a79-4373-ab03-ce37e92272ab" />
+<img width="404" height="685" alt="High-Level Architecture of the Proposed Hybrid Deep Learning Framework for Anomaly-Based IDS" src="https://github.com/user-attachments/assets/0761ff75-7a79-4373-ab03-ce37e92272ab" /> <img width="1483" height="1147" alt="Ablation Study mpact Removing Components" src="https://github.com/user-attachments/assets/4f920569-567e-4d6c-bb27-fe2e70a35eaa" />
 
 ---
 
@@ -86,7 +86,6 @@ Confusion Matrix (CIC-IDS2017 test set)
 ROC Curve (AUC = 0.9974)
 SHAP Summary Plots (feature importance)
 Ablation Study (impact of each component)
-<img width="1483" height="1147" alt="Ablation Study mpact Removing Components" src="https://github.com/user-attachments/assets/c18a1077-848a-4749-8c90-e4027e57549f" />
 
 
 All visualisations are automatically saved in the results/ folder when you run the dashboard.
