@@ -51,3 +51,91 @@ SHAP Explainability → Final Alert + Feature Importance
 ```bash
 git clone https://github.com/YOUR-USERNAME/hybrid-ids-framework.git
 cd hybrid-ids-framework
+Using Docker (Recommended)
+Bashdocker compose up --build
+
+Streamlit Dashboard → http://localhost:8501
+Flask API → http://localhost:5000
+
+Local Setup (without Docker)
+Bashpython -m venv venv
+source venv/bin/activate    # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+streamlit run dashboard.py
+
+📁 Project Structure
+texthybrid-ids-framework/
+├── src/                  # Core source code
+│   ├── hybrid_ids.py     # Main HybridIDS class
+│   ├── preprocessor.py   # LOF + SMOTE + scaling
+│   └── ...
+├── models/               # Saved models (scaler, LOF, LSTM, etc.)
+├── results/              # SHAP plots, metrics, confusion matrix
+├── notebooks/            # EDA and experiments
+├── docs/                 # Documentation
+├── .streamlit/           # Streamlit config
+├── app.py                # Flask REST API
+├── dashboard.py          # Beautiful Streamlit UI
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── README.md
+
+📈 Results & Visualisations
+
+Confusion Matrix (CIC-IDS2017 test set)
+ROC Curve (AUC = 0.9974)
+SHAP Summary Plots (feature importance)
+Ablation Study (impact of each component)
+
+All visualisations are automatically saved in the results/ folder when you run the dashboard.
+
+🛠️ Technologies Used
+
+Core: Python 3.12, TensorFlow/Keras, scikit-learn
+Explainability: SHAP
+Imbalance Handling: imbalanced-learn (SMOTE/ADASYN)
+UI: Streamlit
+API: Flask
+Deployment: Docker + Docker Compose
+CI/CD: GitHub Actions
+
+📚 Datasets
+
+CIC-IDS2017
+CICIoT2023
+UNSW-NB15
+UAVIDS-2025
+
+All datasets were preprocessed with dynamic encoding, inf/NaN handling, and 99th-percentile clipping.
+
+📄 Citation
+If you use this work in your research, please cite:
+bibtex@misc{sanga2026hybridids,
+  author = {Lalthan Sanga},
+  title = {A Hybrid Deep Learning Framework for Anomaly-Based Intrusion Detection Systems},
+  year = {2026},
+  publisher = {GitHub},
+  url = {https://github.com/0xc1GenZ/hybrid-ids-framework}
+}
+
+🤝 Contributing
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
+Fork the repository
+Create a feature branch (git checkout -b feature/amazing-feature)
+Commit your changes (git commit -m 'Add amazing feature')
+Push to the branch (git push origin feature/amazing-feature)
+Open a Pull Request
+
+📜 License
+This project is licensed under the MIT License — see the LICENSE file for details.
+
+🙏 Acknowledgments
+
+Dr. M N Nachappa (Guide)
+Jain (Deemed-to-be University)
+All researchers whose work on CIC datasets and hybrid IDS inspired this project
+
+
+Made with ❤️ for real-world cybersecurity
