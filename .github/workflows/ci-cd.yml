@@ -7,7 +7,6 @@ on:
     branches: [ main, dev ]
 
 jobs:
-  # 1. Code Quality & Tests
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -15,21 +14,13 @@ jobs:
         python-version: ['3.12']
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
@@ -40,60 +31,27 @@ jobs:
       - name: Lint with Ruff
         run: ruff check src/ app.py dashboard.py --output-format=github
 
-      - name: Run tests with coverage
-        run: |
-          pytest tests/ -v --cov=src --cov-report=xml
+      - name: Run tests
+        run: pytest tests/ -v --cov=src --cov-report=xml
 
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.xml
-
-  # 2. Docker Build & Security Scan
   docker:
     needs: test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        run: |
-          docker build -t hybrid-ids:latest .
+        run: docker build -t hybrid-ids:latest .
 
-      - name: Run Trivy vulnerability scanner
+      - name: Trivy vulnerability scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'hybrid-ids:latest'
           format: 'table'
           exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-
-      - name: Docker Compose Test (optional)
-        run: |
-          docker compose up --build -d
-          sleep 10
-          curl -f http://localhost:8501/health || echo "Streamlit health check passed"
-          docker compose down
-
-  # 3. (Optional) Push to Docker Hub on main branch only
-  # docker-push:
-  #   needs: docker
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: docker/login-action@v3
-  #       with:
-  #         username: ${{ secrets.DOCKER_USERNAME }}
-  #         password: ${{ secrets.DOCKER_PASSWORD }}
-  #     - name: Build & push
-  #       run: |
-  #         docker build -t ${{ secrets.DOCKER_USERNAME }}/hybrid-ids:latest .
-  #         docker push ${{ secrets.DOCKER_USERNAME }}/hybrid-ids:latest
