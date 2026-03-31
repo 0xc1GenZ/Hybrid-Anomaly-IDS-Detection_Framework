@@ -112,7 +112,7 @@ All datasets were preprocessed with dynamic encoding, inf/NaN handling, and 99th
 📄 Citation
 If you use this work in your research, please cite:
 bibtex@misc{
-  author = {Lalthan Sanga},
+  author = {Sanga},
   title = {A Hybrid Deep Learning Framework for Anomaly-Based Intrusion Detection Systems},
   year = {2026},
   publisher = {GitHub},
