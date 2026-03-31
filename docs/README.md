@@ -18,7 +18,7 @@
 - **Built-in explainability** with SHAP (see exactly which features triggered an alert)
 - **Robust preprocessing**: LOF noise removal + SMOTE class balancing + dynamic handling of CIC dataset quirks
 - **Professional deployment**: Streamlit dashboard + Flask REST API + Docker Compose
-- **Real-world datasets**: Tested on CIC-IDS2017, CICIoT2023, and UNSW-NB15
+- **Real-world datasets**: Tested on CIC-IDS2017, CICIoT2023, UAVIDS-2025
 - **Production-ready**: GitHub CI/CD, model persistence, and clean code structure
 
 **Achieved Results**  
