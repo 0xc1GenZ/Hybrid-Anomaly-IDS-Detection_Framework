@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+  streamlit:
+    build: .
+    command: streamlit run dashboard.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./models:/app/models
+      - ./results:/app/results
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped
+
+  flask:
+    build: .
+    command: python app.py
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped
+
+networks:
+  default:
+    name: hybrid-ids-network
