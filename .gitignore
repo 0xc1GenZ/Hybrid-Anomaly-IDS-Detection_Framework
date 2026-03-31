@@ -1,27 +1,20 @@
-# Environments
-hybrid_ids_env/
-venv/
-env/
-*.env
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Models & results (ignore large files for now)
-models/*.h5
-models/*.joblib
-results/*.png
-results/*.pkl
-
-# Data (keep only small sample)
+# Data
+data/raw/
 data/*.csv
 !data/sample_flows.csv
 
-# OS & IDE
+# Models & large files
+models/*.h5
+models/*.pth
+models/*.joblib
+*.onnx
+
+# Caches
+__pycache__/
+.pytest_cache/
+.streamlit/
+*.log
+
+# OS
 .DS_Store
 Thumbs.db
-.vscode/
-.idea/
