@@ -1,20 +1,98 @@
-# Data
+# =============================================
+# Python & Virtual Environment
+# =============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+ENV/
+.env
+.env.local
+.venv/
+
+# =============================================
+# IDE & Editor Files
+# =============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =============================================
+# Logs & Temporary Files
+# =============================================
+*.log
+*.tmp
+*.temp
+*.bak
+
+# =============================================
+# Data - Protect Large Files
+# =============================================
 data/raw/
 data/*.csv
 !data/sample_flows.csv
 
-# Models & large files
+# =============================================
+# Models & Large Binary Files
+# =============================================
 models/*.h5
-models/*.pth
 models/*.joblib
-*.onnx
+models/*.pth
+models/*.onnx
+models/*.pkl
+models/*.pickle
+models/*.bin
 
-# Caches
-__pycache__/
+# =============================================
+# Results - Keep only important plots
+# =============================================
+results/*.png
+results/*.jpg
+results/*.csv
+!results/shap_*.png
+!results/confusion_matrix.png
+!results/roc_curve.png
+!results/ablation_*.png
+
+# =============================================
+# Streamlit & Config
+# =============================================
+.streamlit/config.toml
+
+# =============================================
+# Testing & Coverage
+# =============================================
+.coverage
+htmlcov/
 .pytest_cache/
-.streamlit/
-*.log
+.ruff_cache/
+.mypy_cache/
+.coverage.xml
+coverage.xml
 
-# OS
-.DS_Store
-Thumbs.db
+# =============================================
+# Jupyter
+# =============================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# =============================================
+# Docker & Build Artifacts
+# =============================================
+.dockerignore
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# =============================================
+# GitHub & Misc
+# =============================================
+.gitattributes
+*.DS_Store
