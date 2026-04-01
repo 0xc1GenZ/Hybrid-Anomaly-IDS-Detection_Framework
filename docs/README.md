@@ -58,7 +58,9 @@ pip install -r requirements.txt
 streamlit run dashboard.py
 Streamlit Dashboard → http://localhost:8501
 Flask API → http://localhost:5000
+
 OR
+
 Using Docker
 ### One-Click Production Deployment (Recommended)
 
@@ -111,29 +113,23 @@ Confusion Matrix (CIC-IDS2017 test set)
 ROC Curve (AUC = 0.9974)
 SHAP Summary Plots (feature importance)
 Ablation Study (impact of each component)
-
-
 All visualisations are automatically saved in the results/ folder when you run the dashboard.
 
 
 🛠️ Technologies Used
-Category,Technology
-Language,Python 3.12
-Deep Learning,TensorFlow / Keras
-ML Tools,"scikit-learn, imbalanced-learn"
-Explainability,SHAP
-UI,Streamlit
-API,Flask
-Deployment,Docker + Docker Compose
-CI/CD,GitHub Actions
-Core: Python 3.12, TensorFlow/Keras, scikit-learn
-Explainability: SHAP
-Imbalance Handling: imbalanced-learn (SMOTE/ADASYN)
-UI: Streamlit
-API: Flask
-Deployment: Docker + Docker Compose
-CI/CD: GitHub Actions
-
++______________________________________________________+
+| Category           | Technology                      |
++______________________________________________________+   
+| Language,          |   Python 3.12                   |
+| Deep Learning      |  TensorFlow / Keras             |
+| ML Tools/Imbalance-|  scikit-learn, imbalanced-learn,|
+| Handling           |  (SMOTE/ADASYN)                 |
+| Explainability     |  SHAP                           |
+| UI                 |  Streamlit                      |
+| API                |  Flask                          |
+| Deployment,        |  Docker + Docker Compose        |
+| CI/CD              |  GitHub Actions                 |
++______________________________________________________+
 
 📚 Datasets
 
@@ -159,6 +155,7 @@ This project is licensed under the MIT License — see the LICENSE file for deta
 🙏 Acknowledgments
 
 Dr. M N Nachappa (Guide)
+Professor
 Jain (Deemed-to-be University)
 All researchers whose work on CIC datasets and hybrid IDS inspired this project
 
