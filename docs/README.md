@@ -19,7 +19,7 @@
 - **Robust preprocessing**: LOF noise removal + SMOTE class balancing + dynamic handling of CIC dataset quirks
 - **Professional deployment**: Streamlit dashboard + Flask REST API + Docker Compose
 - **Real-world datasets**: Tested on CIC-IDS2017, CICIoT2023, UAVIDS-2025
-- **Production-ready**: GitHub CI/CD, model persistence, and clean code structure
+- **Production-ready**: One-click scripts, logging, GitHub CI/CD, model persistence, and clean code structure
 
 **Achieved Results**  
 - Accuracy: **~98.7%**  
@@ -28,6 +28,7 @@
 - 50%+ reduction in false alarms compared to single-stage models
 
 ---
+
 
 ## 📊 Architecture
 Raw Network Flows
@@ -50,17 +51,36 @@ SHAP Explainability → Final Alert + Feature Importance
 ```bash
 git clone https://github.com/YOUR-USERNAME/hybrid-ids-framework.git
 cd hybrid-ids-framework
-Using Docker (Recommended)
-Bashdocker compose up --build
-
-Streamlit Dashboard → http://localhost:8501
-Flask API → http://localhost:5000
-
 Local Setup (without Docker)
 Bashpython -m venv venv
 source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 streamlit run dashboard.py
+Streamlit Dashboard → http://localhost:8501
+Flask API → http://localhost:5000
+OR
+Using Docker
+### One-Click Production Deployment (Recommended)
+
+**Windows**  
+Double-click **`run_production.bat`**
+
+**macOS / Linux**  
+```bash
+./run_production.sh
+
+These scripts automatically:
+- Check Docker status
+- Stop old containers
+- Build and start both services
+- Save detailed logs to `logs/production.log`
+
+### Manual Commands
+
+```bash
+docker compose up --build -d     # Start in background
+docker compose down              # Stop all services
+
 
 📁 Project Structure
 texthybrid-ids-framework/
@@ -71,12 +91,17 @@ texthybrid-ids-framework/
 ├── models/               # Saved models (scaler, LOF, LSTM, etc.)
 ├── results/              # SHAP plots, metrics, confusion matrix
 ├── notebooks/            # EDA and experiments
+├── logs/                 # Production run logs
 ├── docs/                 # Documentation
 ├── .streamlit/           # Streamlit config
 ├── app.py                # Flask REST API
-├── dashboard.py          # Beautiful Streamlit UI
+├── dashboard.py          # Streamlit UI
 ├── Dockerfile
 ├── docker-compose.yml
+├── run_production.bat    # Windows one-click start
+├── run_production.sh     # macOS/Linux one-click start
+├── stop_production.bat
+├── stop_production.sh
 ├── requirements.txt
 └── README.md
 
@@ -91,6 +116,8 @@ Ablation Study (impact of each component)
 All visualisations are automatically saved in the results/ folder when you run the dashboard.
 
 🛠️ Technologies Used
+CategoryTechnologyLanguagePython 3.12Deep LearningTensorFlow / KerasML Toolsscikit-learn, imbalanced-learnExplainabilitySHAPUIStreamlitAPIFlaskDeploymentDocker + Docker ComposeCI/CDGitHub Actions
+🛠️ Technologies Used
 
 Core: Python 3.12, TensorFlow/Keras, scikit-learn
 Explainability: SHAP
@@ -99,6 +126,7 @@ UI: Streamlit
 API: Flask
 Deployment: Docker + Docker Compose
 CI/CD: GitHub Actions
+
 
 📚 Datasets
 
