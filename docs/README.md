@@ -109,16 +109,6 @@ UAVIDS-2025
 
 All datasets were preprocessed with dynamic encoding, inf/NaN handling, and 99th-percentile clipping.
 
-📄 Citation
-If you use this work in your research, please cite:
-bibtex@misc{
-  author = {Lalthan Sanga},
-  title = {A Hybrid Deep Learning Framework for Anomaly-Based Intrusion Detection Systems},
-  year = {2026},
-  publisher = {GitHub},
-  url = {https://github.com/0xc1GenZ/hybrid-ids-framework}
-}
-
 🤝 Contributing
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
