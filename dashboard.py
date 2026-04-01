@@ -168,9 +168,12 @@ def _split_features_labels(df: pd.DataFrame):
     X     = df.drop(columns=[label_col])
 
     # ── Strategy 1: string-based benign detection ─────────────────────────────
+    # NaN fix: y_raw.fillna(benign_label) before comparing so NaN rows become
+    # y=0 (benign) instead of y=1 (attack). Without this, every NaN label
+    # silently inflates n_atk and reaches SMOTE with corrupt labels.
     benign_label = _detect_benign_label(y_raw)
     if benign_label is not None:
-        y = (y_raw != benign_label).astype(int)
+        y = (y_raw.fillna(benign_label) != benign_label).astype(int)
         return X, y, y_raw
 
     # ── Strategy 2: numeric binary labels (UNSW-NB15 style: 0=benign, 1=attack)
@@ -184,12 +187,11 @@ def _split_features_labels(df: pd.DataFrame):
         pass
 
     # ── Strategy 3: multi-class string labels (attack_cat style) ─────────────
-    # If none of the values are in benign set but values are strings, treat
-    # any value that appears most frequently as benign (majority-class heuristic)
+    # NaN fix: fillna(most_common) so NaN rows are benign (most-common class).
     try:
         if y_raw.dtype == object:
             most_common = y_raw.value_counts().index[0]
-            y = (y_raw != most_common).astype(int)
+            y = (y_raw.fillna(most_common) != most_common).astype(int)
             return X, y, y_raw
     except Exception:
         pass
@@ -876,7 +878,8 @@ with st.sidebar:
 # ===========================================================================
 for key in ("preds", "shap_values", "result_df", "metrics", "model",
             "df", "y_binary", "feature_cols", "roc_data",
-            "active_threshold", "raw_preds", "is_inverted", "force_retrain"):
+            "active_threshold", "raw_preds", "is_inverted", "force_retrain",
+            "scan_mode", "y_raw_labels"):
     if key not in st.session_state:
         st.session_state[key] = None
 
@@ -960,72 +963,148 @@ with tab1:
                     model = None
 
             if model is None:
-                if y_binary is not None:
-                    n_atk  = int(y_binary.sum())
-                    n_ben  = int((y_binary == 0).sum())
-                    n_tot  = n_atk + n_ben
-                    pct_atk = n_atk / max(n_tot, 1) * 100
+                # ── Determine training mode and y_for_fit ────────────────────
+                # y_for_fit is what we actually pass to model.fit().
+                # It is ALWAYS either a valid supervised Series (n_atk ≥ 50)
+                # or None (unsupervised / AE-only).  SMOTE is never called with
+                # all-zero, corrupt, or too-sparse labels.
+                #
+                # Training mode decision tree:
+                #   SUPERVISED  → labelled CSV, n_atk ≥ 50
+                #   UNSUPERVISED → no Label column (PCAP / raw flows)
+                #   BENIGN_ONLY → Label column present, but n_atk == 0
+                #                 → cannot train; requires prior saved model
+                #   TOO_SPARSE  → 1 ≤ n_atk < 50 → cannot train reliably
+                # ─────────────────────────────────────────────────────────────
 
-                    # ── Dataset format detection ──────────────────────────────
-                    # Show which label format was auto-detected so user can
-                    # confirm the file is being parsed correctly.
-                    st.info(
-                        f"📋 **Label detection:** {n_ben:,} benign | "
-                        f"{n_atk:,} attack ({pct_atk:.1f}%) | "
-                        f"Total: {n_tot:,} rows  "
-                        f"*(UNSW-NB15, CICIDS, CICIoT, and benign-only CSVs supported)*"
-                    )
+                if y_binary is None:
+                    # ── Path A: No label column ───────────────────────────────
+                    # Raw PCAP / unlabelled network capture.
+                    # Train in unsupervised mode (AE anomaly scoring only).
+                    _training_mode = "unsupervised"
+                    _n_atk = 0
+                    st.markdown("""
+<div style="display:flex;align-items:center;gap:10px;padding:11px 16px;
+  background:rgba(0,217,245,0.06);border:1px solid rgba(0,217,245,0.18);
+  border-radius:10px;margin-bottom:10px;">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;
+    color:#00d9f5;font-weight:600;">◇ UNSUPERVISED MODE</span>
+  <span style="font-family:'Sora',sans-serif;font-size:0.78rem;color:#6b7a99;">
+    No Label column detected — training Autoencoder on normal flow patterns.
+    Every flow will receive an anomaly score (0 = normal, 1 = suspicious).
+  </span>
+</div>""", unsafe_allow_html=True)
 
-                    if n_atk == 0:
+                else:
+                    _n_atk  = int(y_binary.sum())
+                    _n_ben  = int((y_binary == 0).sum())
+                    _n_tot  = _n_atk + _n_ben
+                    _pct_atk = _n_atk / max(_n_tot, 1) * 100
+
+                    # Label detection badge
+                    st.markdown(f"""
+<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;
+  background:rgba(0,217,245,0.06);border:1px solid rgba(0,217,245,0.18);
+  border-radius:10px;margin-bottom:10px;">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;
+    color:#6b7a99;letter-spacing:0.08em;text-transform:uppercase;">Label Detection</span>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:#0ffa9e;">
+    {_n_ben:,} benign</span>
+  <span style="color:#3d4f6e;">|</span>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:#ff4560;">
+    {_n_atk:,} attack ({_pct_atk:.1f}%)</span>
+  <span style="color:#3d4f6e;">|</span>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#6b7a99;">
+    Total {_n_tot:,}</span>
+</div>""", unsafe_allow_html=True)
+
+                    if _n_atk == 0:
+                        # ── Path B: Benign-only / normal-traffic CSV ──────────
+                        # Cannot train — SMOTE needs both classes.
+                        # Model must already be saved to proceed.
+                        _training_mode = "benign_only"
+                        st.markdown("""
+<div style="padding:14px 18px;
+  background:rgba(245,166,35,0.07);border:1px solid rgba(245,166,35,0.25);
+  border-radius:10px;margin-bottom:10px;">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;
+    color:#f5a623;font-weight:600;margin-bottom:6px;">◌ BENIGN / NORMAL TRAFFIC CSV</div>
+  <div style="font-family:'Sora',sans-serif;font-size:0.82rem;color:#6b7a99;">
+    No attack labels found — this file cannot be used for training.<br>
+    A saved model is required to scan this file.
+    Upload a labelled mixed-traffic dataset (CICIDS-2017, CICIoT-2023, or UNSW-NB15)
+    to train the model first, then re-upload this file.
+  </div>
+</div>""", unsafe_allow_html=True)
                         st.error(
-                            "🚨 **No attack samples found — this appears to be a benign-only CSV.**\n\n"
-                            f"All {n_ben:,} rows are labelled as benign. Training requires both "
-                            "benign AND attack traffic to learn a decision boundary.\n\n"
-                            "**Supported datasets:** CICIDS-2017/2018, CICIoT-2023, UNSW-NB15 "
-                            "(use files that contain mixed benign+attack rows)."
+                            "🚨 **No saved model found.**  \n\n"
+                            "This benign-only CSV cannot train a model — it has no attack "
+                            "examples for the classifier to learn from.  \n\n"
+                            "**Step 1:** Upload a CICIDS-2017 / CICIoT-2023 / UNSW-NB15 CSV "
+                            "and click Run Detection to train.  \n"
+                            "**Step 2:** Re-upload this benign CSV to scan it with the trained model."
                         )
                         st.stop()
-                    elif n_atk < 50:
+
+                    elif _n_atk < 50:
+                        # ── Path C: Too few attacks to train reliably ─────────
+                        _training_mode = "too_sparse"
                         st.error(
-                            f"🚨 **Too few attack samples: {n_atk} found, ≥ 50 required.**\n\n"
-                            f"Your CSV has {n_ben:,} benign rows but only {n_atk} attack rows. "
+                            f"🚨 **Too few attack samples: {_n_atk} found, ≥ 50 required.**\n\n"
+                            f"Your CSV has {_n_ben:,} benign rows but only {_n_atk} attack rows. "
                             "This is too few to train a reliable classifier.\n\n"
                             "**For CICIDS-2017:** Use the Wednesday or Thursday daily CSV.\n"
-                            "**For UNSW-NB15:** Combine multiple part files "
-                            "(UNSW-NB15_1.csv through _4.csv) for better attack coverage."
+                            "**For UNSW-NB15:** Combine part files 1–4 for better attack coverage."
                         )
                         st.stop()
-                    elif n_atk < 500:
+
+                    elif _n_atk < 500:
+                        # ── Path D: Sparse but usable ─────────────────────────
+                        _training_mode = "supervised_sparse"
                         st.warning(
-                            f"⚠️ Only {n_atk:,} attack samples ({pct_atk:.1f}%) — training will "
+                            f"⚠️ Only {_n_atk:,} attack samples ({_pct_atk:.1f}%) — training will "
                             "proceed but AUC and recall may be modest. "
                             "Aim for ≥ 10,000 attack samples for best results."
                         )
+                    else:
+                        # ── Path E: Good supervised dataset ──────────────────
+                        _training_mode = "supervised"
+
+                # ── y_for_fit: ALWAYS safe to pass to model.fit() ────────────
+                # Supervised only when we have ≥ 50 genuine attack labels.
+                # Every other case falls back to None (unsupervised = AE only).
+                # This is the single gate that prevents SMOTE from ever seeing
+                # all-zero, NaN-contaminated, or too-sparse label arrays.
+                _y_for_fit = (
+                    y_binary
+                    if (y_binary is not None and int(y_binary.sum()) >= 50)
+                    else None
+                )
+
                 with st.spinner("Training model on uploaded data…"):
                     try:
                         model = HybridIDS()
-                        model.fit(X, y_binary)
+                        model.fit(X, _y_for_fit)
                         _save_model(model)
-                        st.success("✅ Model trained and saved")
+                        _mode_label = (
+                            "supervised" if _y_for_fit is not None else "unsupervised"
+                        )
+                        st.success(
+                            f"✅ Model trained and saved — **{_mode_label} mode**  \n"
+                            f"({'LSTM + AE' if _y_for_fit is not None else 'AE anomaly scoring only'})"
+                        )
                     except Exception as e:
                         err_str = str(e).lower()
-
-                        # ── Friendly error messages for known failure modes ────
-                        if "len() of unsized object" in err_str or                            "iteration over a 0-d" in err_str:
+                        if "len() of unsized" in err_str or "iteration over a 0-d" in err_str:
                             st.error(
-                                "🚨 **Training failed: label/class array error.**\n\n"
-                                "This usually means the dataset has very few attack "
-                                "samples and SMOTE/ADASYN cannot generate synthetic "
-                                "examples, OR the label column contains NaN values "
-                                "that caused a 0-dimensional numpy array.\n\n"
+                                "🚨 **Training failed: numpy array dimension error.**\n\n"
+                                "This is almost always caused by a preprocessing edge case "
+                                "(e.g. LOF removed all rows, or an empty feature matrix).\n\n"
                                 f"**Details:** `{e}`\n\n"
-                                "**Fix options:**\n"
-                                "• Use a dataset with ≥ 500 attack samples\n"
-                                "• For UNSW-NB15: combine all 4 part files\n"
-                                "• For CICIDS-2017: use Wednesday/Thursday CSV\n"
-                                "• Ensure the Label column has no missing values"
+                                "Try enabling **Show Debug Info** in the sidebar to inspect "
+                                "your dataset's first rows for unusual values."
                             )
-                        elif "cannot take a larger sample" in err_str or                              "expected n_neighbors" in err_str:
+                        elif "cannot take a larger sample" in err_str or "expected n_neighbors" in err_str:
                             st.error(
                                 "🚨 **Training failed: too few minority samples for SMOTE.**\n\n"
                                 f"**Details:** `{e}`\n\n"
@@ -1037,14 +1116,14 @@ with tab1:
                                 "🚨 **Training failed: feature dimension mismatch.**\n\n"
                                 f"**Details:** `{e}`\n\n"
                                 "Delete the `models/` folder (click **🗑️ Clear** in sidebar) "
-                                "and retrain — a stale model with different features may be loaded."
+                                "and retrain."
                             )
                         else:
                             st.error(
                                 f"🚨 **Training failed:** `{e}`\n\n"
-                                "Check that the CSV has valid numeric feature columns "
-                                "and a 'Label' column. Enable **Show Debug Info** in the "
-                                "sidebar to inspect the first rows of your dataset."
+                                "Check that the CSV has valid numeric feature columns. "
+                                "Enable **Show Debug Info** in the sidebar to inspect "
+                                "the first rows of your dataset."
                             )
                         st.stop()
 
@@ -1147,6 +1226,14 @@ with tab1:
             else:
                 metrics_out = None
 
+            # ── Determine scan mode ──────────────────────────────────────────
+            if y_clean is not None and metrics_out is not None:
+                _scan_mode = "supervised"
+            elif y_binary is None and y_raw is None:
+                _scan_mode = "unsupervised"
+            else:
+                _scan_mode = "benign_scan"   # labelled but unlabelled/benign-only
+
             # ── Store in session_state ────────────────────────────────────────
             st.session_state["model"]            = model
             st.session_state["raw_preds"]        = preds
@@ -1155,11 +1242,13 @@ with tab1:
             st.session_state["shap_values"]      = shap_vals
             st.session_state["df"]               = df
             st.session_state["y_binary"]         = y_clean
+            st.session_state["y_raw_labels"]     = y_raw
             st.session_state["feature_cols"]     = model.feature_cols
             st.session_state["result_df"]        = result_df
             st.session_state["metrics"]          = metrics_out
             st.session_state["roc_data"]         = roc_data
             st.session_state["active_threshold"] = active_threshold
+            st.session_state["scan_mode"]        = _scan_mode
 
             st.rerun()   # refresh so tab2/tab3 see new state immediately
 
@@ -1171,16 +1260,45 @@ with tab1:
             n_total    = len(preds)
             metrics_s  = st.session_state["metrics"]
 
+            scan_mode = st.session_state.get("scan_mode") or "unsupervised"
+            n_normal  = n_total - n_flagged
+
+            # ── Scan mode badge ───────────────────────────────────────────────
+            _mode_cfg = {
+                "supervised":   ("#0ffa9e", "rgba(15,250,158,0.08)",
+                                 "rgba(15,250,158,0.2)", "◈ SUPERVISED SCAN",
+                                 "Labelled · Accuracy & FPR metrics available"),
+                "unsupervised": ("#00d9f5", "rgba(0,217,245,0.08)",
+                                 "rgba(0,217,245,0.2)", "◇ UNSUPERVISED SCAN",
+                                 "No labels · AE + LSTM anomaly scoring"),
+                "benign_scan":  ("#f5a623", "rgba(245,166,35,0.08)",
+                                 "rgba(245,166,35,0.2)", "◌ NORMAL TRAFFIC SCAN",
+                                 "Unlabelled / benign-only · Anomaly detection mode"),
+            }
+            _clr, _bg, _bd, _lbl, _sub = _mode_cfg.get(scan_mode, _mode_cfg["unsupervised"])
+            st.markdown(f"""
+<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;
+  background:{_bg};border:1px solid {_bd};border-radius:9px;margin-bottom:14px;">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;
+    color:{_clr};font-weight:600;">{_lbl}</span>
+  <span style="color:#3d4f6e;">|</span>
+  <span style="font-family:'Sora',sans-serif;font-size:0.78rem;color:#6b7a99;">{_sub}</span>
+</div>""", unsafe_allow_html=True)
+
+            # ── Flow classification summary ───────────────────────────────────
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("FLAGGED ANOMALIES", f"{n_flagged:,}",
                       f"{n_flagged/max(n_total,1)*100:.1f}% of flows")
-            c2.metric("TOTAL FLOWS SCANNED", f"{n_total:,}")
-            c3.metric("ACTIVE THRESHOLD", f"{thr:.4f}")
+            c2.metric("NORMAL TRAFFIC", f"{n_normal:,}",
+                      f"{n_normal/max(n_total,1)*100:.1f}% of flows")
+            c3.metric("TOTAL FLOWS SCANNED", f"{n_total:,}")
             if metrics_s:
                 fpr_pct = metrics_s['fpr'] * 100
                 c4.metric("FALSE POSITIVE RATE",
                            f"{fpr_pct:.2f}%",
                            "UNDER TARGET" if fpr_pct < 5 else "OVER 5%")
+            else:
+                c4.metric("ACTIVE THRESHOLD", f"{thr:.4f}")
 
 
 # ---------------------------------------------------------------------------
@@ -1386,45 +1504,194 @@ with tab2:
                     st.pyplot(fig_roc); plt.close(fig_roc)
 
         else:
-            st.info(
-                "No ground-truth labels found — add a 'Label' column to your "
-                "CSV to see accuracy, FPR, F1, the ROC curve, and live tuning."
-            )
-            st.metric("🚨 Flagged Anomalies", f"{n_flagged:,}")
-            st.metric("📦 Total Flows",        f"{n_total:,}")
+            # ── Unsupervised / benign-scan mode display ───────────────────────
+            scan_mode  = st.session_state.get("scan_mode") or "unsupervised"
+            n_normal   = n_total - n_flagged
+
+            # Risk tiers based on score
+            preds_arr   = np.asarray(preds)
+            n_low_risk  = int(np.sum(preds_arr <= 0.30))
+            n_med_risk  = int(np.sum((preds_arr > 0.30) & (preds_arr <= 0.65)))
+            n_high_risk = int(np.sum(preds_arr > 0.65))
+
+            if scan_mode == "benign_scan":
+                st.markdown("""
+<div style="padding:14px 18px;
+  background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);
+  border-radius:10px;margin-bottom:16px;">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;
+    color:#f5a623;font-weight:600;">◌ NORMAL TRAFFIC SCAN — No ground-truth labels</span><br>
+  <span style="font-family:'Sora',sans-serif;font-size:0.82rem;color:#6b7a99;margin-top:4px;
+    display:block;">
+    The model is scoring each flow purely from its learned anomaly signal
+    (AE reconstruction error + LSTM). Flows with scores above the threshold
+    are flagged as suspicious regardless of any label.
+    Add a <code style="color:#00d9f5;">Label</code> column to your CSV to unlock
+    accuracy, FPR, F1 and ROC metrics.
+  </span>
+</div>""", unsafe_allow_html=True)
+            else:
+                st.markdown("""
+<div style="padding:14px 18px;
+  background:rgba(0,217,245,0.06);border:1px solid rgba(0,217,245,0.15);
+  border-radius:10px;margin-bottom:16px;">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;
+    color:#00d9f5;font-weight:600;">◇ UNSUPERVISED SCAN — No ground-truth labels</span><br>
+  <span style="font-family:'Sora',sans-serif;font-size:0.82rem;color:#6b7a99;margin-top:4px;
+    display:block;">
+    This CSV has no <code style="color:#00d9f5;">Label</code> column.
+    Each flow receives a continuous anomaly score from the hybrid model.
+    Flows above the threshold are flagged as suspicious.
+    Add a Label column to unlock accuracy and FPR metrics.
+  </span>
+</div>""", unsafe_allow_html=True)
+
+            # ── Flow breakdown ────────────────────────────────────────────────
+            ca, cb, cc, cd = st.columns(4)
+            ca.metric("NORMAL FLOWS",       f"{n_normal:,}",
+                      f"{n_normal/max(n_total,1)*100:.1f}%")
+            cb.metric("FLAGGED SUSPICIOUS", f"{n_flagged:,}",
+                      f"{n_flagged/max(n_total,1)*100:.1f}%")
+            cc.metric("TOTAL SCANNED",      f"{n_total:,}")
+            cd.metric("ACTIVE THRESHOLD",   f"{live_thr:.4f}")
+
+            st.divider()
+
+            # ── Risk tier breakdown ───────────────────────────────────────────
+            st.markdown("""<div style="font-family:'Sora',sans-serif;font-weight:700;
+              font-size:1rem;color:#e8edf5;margin-bottom:10px;">
+              Risk Tier Breakdown</div>""", unsafe_allow_html=True)
+
+            r1, r2, r3 = st.columns(3)
+            r1.markdown(f"""
+<div style="background:rgba(15,250,158,0.07);border:1px solid rgba(15,250,158,0.2);
+  border-radius:10px;padding:16px;text-align:center;position:relative;overflow:hidden;">
+  <div style="position:absolute;top:0;left:0;right:0;height:2px;
+    background:#0ffa9e;"></div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;
+    color:#6b7a99;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">
+    Low Risk · Score ≤ 0.30</div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:2rem;
+    font-weight:700;color:#0ffa9e;">{n_low_risk:,}</div>
+  <div style="font-family:'Sora',sans-serif;font-size:0.75rem;color:#6b7a99;margin-top:4px;">
+    {n_low_risk/max(n_total,1)*100:.1f}% of flows · Likely normal</div>
+</div>""", unsafe_allow_html=True)
+
+            r2.markdown(f"""
+<div style="background:rgba(245,166,35,0.07);border:1px solid rgba(245,166,35,0.2);
+  border-radius:10px;padding:16px;text-align:center;position:relative;overflow:hidden;">
+  <div style="position:absolute;top:0;left:0;right:0;height:2px;
+    background:#f5a623;"></div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;
+    color:#6b7a99;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">
+    Medium Risk · 0.30–0.65</div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:2rem;
+    font-weight:700;color:#f5a623;">{n_med_risk:,}</div>
+  <div style="font-family:'Sora',sans-serif;font-size:0.75rem;color:#6b7a99;margin-top:4px;">
+    {n_med_risk/max(n_total,1)*100:.1f}% of flows · Investigate</div>
+</div>""", unsafe_allow_html=True)
+
+            r3.markdown(f"""
+<div style="background:rgba(255,69,96,0.07);border:1px solid rgba(255,69,96,0.2);
+  border-radius:10px;padding:16px;text-align:center;position:relative;overflow:hidden;">
+  <div style="position:absolute;top:0;left:0;right:0;height:2px;
+    background:#ff4560;"></div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;
+    color:#6b7a99;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">
+    High Risk · Score > 0.65</div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:2rem;
+    font-weight:700;color:#ff4560;">{n_high_risk:,}</div>
+  <div style="font-family:'Sora',sans-serif;font-size:0.75rem;color:#6b7a99;margin-top:4px;">
+    {n_high_risk/max(n_total,1)*100:.1f}% of flows · High priority</div>
+</div>""", unsafe_allow_html=True)
 
         st.divider()
 
         # ── Prediction table ─────────────────────────────────────────────────
-        st.subheader("📋 Prediction Results (first 50 rows)")
-        # Rebuild Prediction column at the live threshold for the display table
+        st.markdown('''<div style="font-family:'Sora',sans-serif;font-weight:700;
+          font-size:1rem;color:#e8edf5;margin:16px 0 8px;">
+          ≡ Flow Classification — First 50 Rows</div>''', unsafe_allow_html=True)
+
         display_result = result_df.copy()
+
+        # Re-apply prediction label at current live threshold
         display_result["Prediction"] = np.where(
-            display_result["Probability"] > live_thr, "ANOMALY", "BENIGN"
+            display_result["Probability"] > live_thr, "⚠ ANOMALY", "✓ NORMAL"
         )
-        extra_cols   = [c for c in display_result.columns
-                        if c not in ("Prediction", "Probability")][:5]
-        display_cols = ["Prediction", "Probability"] + extra_cols
-        st.dataframe(display_result[display_cols].head(50), use_container_width=True)
+
+        # Risk level column — three tiers
+        def _risk(p):
+            if p > 0.65: return "HIGH"
+            if p > 0.30: return "MEDIUM"
+            return "LOW"
+        display_result["Risk"] = display_result["Probability"].apply(_risk)
+
+        # Append raw label column if available (helps audit)
+        y_raw_lbl = st.session_state.get("y_raw_labels")
+        if y_raw_lbl is not None:
+            try:
+                # Align to X_clean surviving rows (same index as result_df)
+                # result_df was built from X_clean which has reset_index
+                # y_raw_lbl is full-length original; we can only show first n
+                display_result["True Label"] = (
+                    y_raw_lbl.iloc[:len(display_result)].values
+                )
+            except Exception:
+                pass
+
+        priority_cols = ["Prediction", "Risk", "Probability"]
+        if "True Label" in display_result.columns:
+            priority_cols.append("True Label")
+        feat_preview  = [c for c in display_result.columns
+                         if c not in priority_cols][:4]
+        display_cols  = priority_cols + feat_preview
+
+        st.dataframe(display_result[display_cols].head(50),
+                     use_container_width=True)
 
         # ── Score distribution ───────────────────────────────────────────────
         st.subheader("📈 Anomaly Score Distribution")
         fig, ax = plt.subplots(figsize=(9, 3.2), facecolor="#0d1220")
         ax.set_facecolor("#0d1220")
-        ax.hist(preds, bins=60, color="#00d9f5", alpha=0.55,
-                edgecolor="none", label="Anomaly scores")
-        ax.axvline(live_thr, color="#ff4560", linestyle="--", linewidth=2,
+
+        # ── Background zones: Normal / Suspicious ─────────────────────────
+        ax.axvspan(0,          live_thr, alpha=0.06, color="#0ffa9e",
+                   label="Normal zone")
+        ax.axvspan(live_thr,   1.0,     alpha=0.06, color="#ff4560",
+                   label="Suspicious zone")
+
+        # ── Histogram — colour each bar by its zone ────────────────────────
+        preds_arr = np.asarray(preds)
+        bins      = np.linspace(0, 1, 61)
+        normal_preds = preds_arr[preds_arr <= live_thr]
+        attack_preds = preds_arr[preds_arr  > live_thr]
+        if len(normal_preds):
+            ax.hist(normal_preds, bins=bins, color="#0ffa9e",
+                    alpha=0.55, edgecolor="none", label="Normal flows")
+        if len(attack_preds):
+            ax.hist(attack_preds, bins=bins, color="#ff4560",
+                    alpha=0.70, edgecolor="none", label="Suspicious flows")
+
+        # ── Risk tier lines ────────────────────────────────────────────────
+        ax.axvline(0.30, color="#f5a623", linestyle=":",
+                   linewidth=1.2, alpha=0.7, label="Medium risk (0.30)")
+        ax.axvline(0.65, color="#ff4560", linestyle=":",
+                   linewidth=1.2, alpha=0.7, label="High risk (0.65)")
+        ax.axvline(live_thr, color="#ffffff", linestyle="--", linewidth=2,
                    label=f"Threshold {live_thr:.4f}")
         if live_thr != active_thr:
-            ax.axvline(active_thr, color="#0ffa9e", linestyle=":",
+            ax.axvline(active_thr, color="#00d9f5", linestyle=":",
                        linewidth=1.5, label=f"Optimal {active_thr:.4f}")
-        ax.set_xlabel("Anomaly Score", color="#6b7a99", fontsize=9)
-        ax.set_ylabel("Flow Count",   color="#6b7a99", fontsize=9)
+
+        ax.set_xlabel("Anomaly Score  →  0 = Normal  /  1 = Attack",
+                      color="#6b7a99", fontsize=9)
+        ax.set_ylabel("Flow Count", color="#6b7a99", fontsize=9)
         ax.tick_params(colors="#6b7a99", labelsize=8)
         for spine in ax.spines.values():
             spine.set_edgecolor("#1e2d45")
-        ax.legend(fontsize=8, facecolor="#111827",
-                  edgecolor="#1e2d45", labelcolor="#e8edf5")
+        ax.legend(fontsize=7.5, facecolor="#111827",
+                  edgecolor="#1e2d45", labelcolor="#e8edf5",
+                  ncol=3, loc="upper center")
         plt.tight_layout()
         st.pyplot(fig); plt.close(fig)
 
