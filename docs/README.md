@@ -115,10 +115,17 @@ Ablation Study (impact of each component)
 
 All visualisations are automatically saved in the results/ folder when you run the dashboard.
 
-🛠️ Technologies Used
-CategoryTechnologyLanguagePython 3.12Deep LearningTensorFlow / KerasML Toolsscikit-learn, imbalanced-learnExplainabilitySHAPUIStreamlitAPIFlaskDeploymentDocker + Docker ComposeCI/CDGitHub Actions
-🛠️ Technologies Used
 
+🛠️ Technologies Used
+Category,Technology
+Language,Python 3.12
+Deep Learning,TensorFlow / Keras
+ML Tools,"scikit-learn, imbalanced-learn"
+Explainability,SHAP
+UI,Streamlit
+API,Flask
+Deployment,Docker + Docker Compose
+CI/CD,GitHub Actions
 Core: Python 3.12, TensorFlow/Keras, scikit-learn
 Explainability: SHAP
 Imbalance Handling: imbalanced-learn (SMOTE/ADASYN)
