@@ -120,14 +120,14 @@ All visualisations are automatically saved in the results/ folder when you run t
 +______________________________________________________+
 | Category           | Technology                      |
 +______________________________________________________+   
-| Language,          |   Python 3.12                   |
+| Language           |  Python 3.12                    |
 | Deep Learning      |  TensorFlow / Keras             |
 | ML Tools/Imbalance-|  scikit-learn, imbalanced-learn,|
 | Handling           |  (SMOTE/ADASYN)                 |
 | Explainability     |  SHAP                           |
 | UI                 |  Streamlit                      |
 | API                |  Flask                          |
-| Deployment,        |  Docker + Docker Compose        |
+| Deployment         |  Docker + Docker Compose        |
 | CI/CD              |  GitHub Actions                 |
 +______________________________________________________+
 
