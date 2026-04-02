@@ -600,6 +600,63 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
+# ===========================================================================
+# EASTER EGGS — Cyber jokes · Animated mascots · Click wisdom
+# (All pure HTML/CSS/JS injected via st.markdown — zero Python overhead)
+# ===========================================================================
+
+import random as _random
+
+_CYBER_QUOTES = [
+    ("There are only two types of companies:", "those that have been hacked,\nand those that don't know it yet. 👻", "— John Chambers, Cisco"),
+    ("Why did the hacker break up?", "Too many trust issues — just like our SSL certs. 💔", "— Anonymous SOC Analyst"),
+    ("A SQL injection walks into a bar.", "Drops tables. No survivors. 🪑", "— Every DBA's nightmare"),
+    ("How does a hacker fix a bug?", "They don't. They ship it as a 'feature'. 🚀", "— Git blame, every time"),
+    ("Roses are #FF0000,", "Violets are #0000FF,\nbut your firewall logs are 🔥🔥🔥", "— Romantic Pentester"),
+    ("Why don't hackers like nature?", "Too many unknown bugs and no patch notes. 🐛", "— Patch Tuesday Survivor"),
+    ("The cloud is just", "someone else's computer you forgot to secure. ☁️", "— Cloud Evangelist (in denial)"),
+    ("I asked AI to detect intrusions.", "It found 3 in my code. All of them were me. 🤖", "— ML Engineer, 3 AM"),
+    ("My password is 'incorrect'.", "So when I forget it, the system reminds me. 🔑", "— Surprisingly Common"),
+    ("There's no patch for", "human stupidity. But we trained a model anyway. 🧠", "— This dashboard"),
+    ("Why did the cat help with cybersecurity?", "Because it always lands on its paws\nand NEVER clicks phishing links. 🐱", "— Adopted Mascot"),
+    ("The spider's web is the best IDS:", "if something big blunders in, you know immediately. 🕷️", "— Nature's SOC"),
+    ("Ghost traffic is the scariest —", "you can't see it until it haunts your logs. 👻", "— Wireshark Whisperer"),
+    ("Training a neural net is like parenting:", "you feed it garbage, it learns garbage,\nthen you blame the architecture. 🍼", "— ML Dad Jokes"),
+    ("False positives are just", "the model crying wolf.\nBut sometimes the wolf IS there. 🐺", "— ROC Curve Philosopher"),
+    ("A penetration tester walks into a bar.", "The bartender asks for ID.\nHe submits a 0-day instead. 🍺", "— Security Conference 2024"),
+    ("SMOTE to the rescue!", "When you only have 2 attack samples\nand infinite ambition. ✨", "— Imbalanced Dataset Diary"),
+    ("Autoencoder walks into therapy:", "'I keep reconstructing my trauma.' 😭", "— Deep Learning Feelings"),
+    ("Why is the LSTM crying?", "It forgot the beginning of the sentence.\nAnd also its padding value. 😢", "— Sequence Model Struggles"),
+    ("99.9% uptime sounds great —", "until you realise that's 8.7 hours\nof downtime per year. Somebody get fired. ⏰", "— SLA Nightmares"),
+]
+
+_q = _CYBER_QUOTES[_random.randint(0, len(_CYBER_QUOTES) - 1)]
+
+st.markdown(f"""
+<div id="quote-banner" style="
+  background:linear-gradient(135deg,#0d1422,#111e30);
+  border:1px solid rgba(0,217,245,0.15); border-left:3px solid #00d9f5;
+  border-radius:10px; padding:14px 20px; margin-bottom:14px;
+  display:flex; align-items:flex-start; gap:14px; cursor:pointer;
+  position:relative; overflow:hidden;
+" onclick="this.style.opacity='0.5';setTimeout(()=>this.style.opacity='1',200);"
+  title="Click for a new one on next reload 😄">
+  <div style="font-size:1.6rem;flex-shrink:0;line-height:1.2;margin-top:2px;">🔐</div>
+  <div>
+    <div style="font-family:'Sora',sans-serif;font-size:0.82rem;color:#e8edf5;
+      font-weight:600;line-height:1.5;">{_q[0]}</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;
+      color:#00d9f5;margin-top:3px;white-space:pre-line;">{_q[1]}</div>
+    <div style="font-family:'Sora',sans-serif;font-size:0.68rem;color:#6b7a99;
+      margin-top:5px;font-style:italic;">{_q[2]}</div>
+  </div>
+  <div style="position:absolute;top:8px;right:12px;font-family:'JetBrains Mono',
+    monospace;font-size:0.6rem;color:#3d4f6e;letter-spacing:0.06em;">
+    CYBER WISDOM · RELOAD FOR NEW</div>
+</div>
+""", unsafe_allow_html=True)
+
 # ===========================================================================
 # DESIGN SYSTEM — Cyber-Ops dark theme
 # ===========================================================================
@@ -712,6 +769,93 @@ h2,h3 { font-family:'Sora',sans-serif !important; font-weight:700 !important; }
 [data-testid="stSidebar"] h2,[data-testid="stSidebar"] h3 {
   font-family:'Sora',sans-serif !important; font-weight:700 !important;
 }
+
+/* ══════════════════════════════════════════════
+   MASCOT ANIMATIONS
+   ══════════════════════════════════════════════ */
+
+/* ── Ghost floating in top-right corner ── */
+#ids-ghost {
+  position:fixed; top:18px; right:22px; z-index:9999;
+  font-size:2.2rem; line-height:1;
+  animation: ghost-float 3s ease-in-out infinite;
+  cursor:pointer; user-select:none;
+  filter:drop-shadow(0 0 8px rgba(0,217,245,0.5));
+  transition:transform 0.2s;
+}
+#ids-ghost:hover { transform:scale(1.35) rotate(-10deg); }
+#ids-ghost .ghost-tooltip {
+  display:none; position:absolute; right:44px; top:0;
+  background:#111827; border:1px solid rgba(0,217,245,0.25);
+  border-radius:8px; padding:8px 12px; white-space:nowrap;
+  font-family:'JetBrains Mono',monospace; font-size:0.7rem;
+  color:#00d9f5; box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  pointer-events:none;
+}
+#ids-ghost:hover .ghost-tooltip { display:block; }
+@keyframes ghost-float {
+  0%,100% { transform:translateY(0); }
+  50%      { transform:translateY(-10px); }
+}
+
+/* ── Spider crawling across top ── */
+#ids-spider {
+  position:fixed; top:0; left:-60px; z-index:9998;
+  font-size:1.5rem; line-height:1;
+  animation: spider-crawl 18s linear infinite;
+  cursor:pointer; user-select:none;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+}
+#ids-spider:hover { animation-play-state:paused; transform:scale(1.4); }
+#ids-spider .spider-tooltip {
+  display:none; position:absolute; top:22px; left:0;
+  background:#111827; border:1px solid rgba(255,69,96,0.3);
+  border-radius:8px; padding:8px 12px; white-space:nowrap;
+  font-family:'JetBrains Mono',monospace; font-size:0.68rem;
+  color:#ff4560; box-shadow:0 4px 20px rgba(0,0,0,0.5);
+}
+#ids-spider:hover .spider-tooltip { display:block; }
+@keyframes spider-crawl {
+  0%   { left:-60px;  top:0px;   transform:rotate(0deg);   }
+  25%  { left:40vw;   top:8px;   transform:rotate(5deg);   }
+  50%  { left:80vw;   top:0px;   transform:rotate(-5deg);  }
+  75%  { left:100vw;  top:10px;  transform:rotate(3deg);   }
+  100% { left:110vw;  top:0px;   transform:rotate(0deg);   }
+}
+
+/* ── Cat peeking from bottom of sidebar ── */
+#ids-cat {
+  position:fixed; bottom:0; left:0;
+  width:260px; /* matches sidebar width */
+  z-index:9997; pointer-events:none;
+  display:flex; justify-content:flex-end;
+  padding-right:16px;
+  animation: cat-peek 8s ease-in-out infinite;
+}
+@keyframes cat-peek {
+  0%,60%,100% { transform:translateY(72px); }
+  20%,40%     { transform:translateY(20px); }
+}
+
+/* ── Click tooltip that follows cursor ── */
+#click-bubble {
+  position:fixed; z-index:99999;
+  background:#111827; border:1px solid rgba(0,217,245,0.3);
+  border-radius:10px; padding:9px 14px;
+  font-family:'JetBrains Mono',monospace; font-size:0.72rem;
+  color:#00d9f5; pointer-events:none;
+  box-shadow:0 4px 24px rgba(0,0,0,0.6);
+  opacity:0; transition:opacity 0.15s;
+  max-width:280px; line-height:1.5;
+  white-space:pre-wrap;
+}
+
+/* ── Konami easter egg flash ── */
+@keyframes konami-flash {
+  0%,100% { background:var(--bg-base); }
+  25%     { background:rgba(0,217,245,0.08); }
+  75%     { background:rgba(15,250,158,0.06); }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -761,6 +905,151 @@ st.markdown("""
   </div>
   <style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
 </div>
+""", unsafe_allow_html=True)
+
+
+# ===========================================================================
+# MASCOT HTML + CLICK WISDOM JS
+# ===========================================================================
+st.markdown("""
+<!-- ── Ghost mascot ── -->
+<div id="ids-ghost">
+  👻
+  <div class="ghost-tooltip">👻 I haunt your logs at 3 AM...</div>
+</div>
+
+<!-- ── Spider mascot ── -->
+<div id="ids-spider">
+  🕷️
+  <div class="spider-tooltip">🕷️ Spinning a web of packet captures...</div>
+</div>
+
+<!-- ── Cat peeking from sidebar bottom ── -->
+<div id="ids-cat">
+  <div style="font-size:2.2rem;line-height:1;
+    filter:drop-shadow(0 -4px 8px rgba(0,217,245,0.3));
+    font-family:sans-serif;">🐱</div>
+</div>
+
+<!-- ── Click bubble ── -->
+<div id="click-bubble"></div>
+
+<script>
+// ── Click-anywhere wisdom ──────────────────────────────────────────────────
+const _jokes = [
+  "// TODO: fix this before demo\n...never fixed it. 😬",
+  "Have you tried turning it off\nand on again? (works 60% of the time)",
+  "It's not a bug.\nIt's an undocumented feature. ✨",
+  "The attacker is inside the building.\nThe building is your LSTM. 🏚️",
+  "FPR < 5%? Bold of you\nto assume I sleep anyway. 😴",
+  "git commit -m 'fixes'\ngit push\n*production burns* 🔥",
+  "This model trained on\n200,000 rows. You're welcome. 🧠",
+  "Anomaly detected: you\nhaven't taken a break in 4 hours. ☕",
+  "There are 10 types of people:\nthose who understand binary\nand those who don't. 🤓",
+  "I'm not lazy, I'm\nenergy-efficient. Like LOF. ⚡",
+  "Congratulations, you clicked!\nThat's how phishing works too. 🎣",
+  "The spider says hi.\nNo, it's not a RAT. Probably. 🕷️",
+  "Shh... the autoencoder\nis trying to reconstruct itself. 🤫",
+  "ROC curve looking thicc today.\nAUC = 0.99? Slay. 💅",
+  "Your model is cool\nbut have you tried\njust unplugging the router? 🔌",
+  "PSA: '123456' is still\nthe most common password. Humanity. 🤦",
+  "The ghost in your logs\nis probably just a scanner. Probably. 👻",
+  "SMOTE: because the real\nattacks were the friends we\ngenerated along the way. 🌈",
+  "Adversarial attack detected:\nsomeone typed 'rm -rf /' in chat. 💀",
+  "Firewall rule #1:\nif in doubt, drop it.\nFirewall rule #2: see rule #1. 🧱",
+  "The cat is monitoring your traffic.\nDon't @ me. 🐱",
+  "Zero-day?\nMore like zero-sleep. 😵",
+  "Your threshold is 0.29.\nMy confidence is 0.05.\nSame energy. 📉",
+  "Alert fatigue is real.\nThis is your 1,247th anomaly today.\nYou good? 🫠",
+  "Machine learning:\nteaching computers to be\nas confused as we are. 🤖",
+];
+
+const _bubble = document.getElementById('click-bubble');
+let _tid = null;
+
+document.addEventListener('click', (e) => {
+  const msg = _jokes[Math.floor(Math.random() * _jokes.length)];
+  _bubble.textContent = msg;
+  _bubble.style.left  = Math.min(e.clientX + 14, window.innerWidth - 300) + 'px';
+  _bubble.style.top   = Math.max(e.clientY - 20, 10) + 'px';
+  _bubble.style.opacity = '1';
+  clearTimeout(_tid);
+  _tid = setTimeout(() => { _bubble.style.opacity = '0'; }, 2800);
+});
+
+// ── Ghost click — special message ─────────────────────────────────────────
+const _ghost = document.getElementById('ids-ghost');
+const _ghostMsgs = [
+  "BOO! ...jk, I'm just\nyour anomaly detector in disguise 👻",
+  "I've been monitoring this network\nsince before you were born. 📡",
+  "Ghost traffic detected.\nSpoiler: it was a port scanner. 🕵️",
+  "I haunt packet headers\nthat nobody reads. 😢",
+  "Zero packets transmitted,\nzero feelings expressed. 👻",
+];
+if (_ghost) {
+  _ghost.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const msg = _ghostMsgs[Math.floor(Math.random() * _ghostMsgs.length)];
+    _bubble.textContent = msg;
+    _bubble.style.left  = (e.clientX - 220) + 'px';
+    _bubble.style.top   = (e.clientY + 10) + 'px';
+    _bubble.style.opacity = '1';
+    clearTimeout(_tid);
+    _tid = setTimeout(() => { _bubble.style.opacity = '0'; }, 3000);
+  });
+}
+
+// ── Spider click ───────────────────────────────────────────────────────────
+const _spider = document.getElementById('ids-spider');
+const _spiderMsgs = [
+  "🕷️ I've been crawling your traffic longer than Google crawls your site.",
+  "🕸️ My web catches packets.\nYour firewall catches feelings.",
+  "🕷️ I'm not a RAT.\n...I'm a spider. Important distinction.",
+  "🕸️ Eight legs, zero false positives.\nWish I could say the same for SMOTE.",
+  "🕷️ Spinning threads since before\nmulti-threading was cool.",
+];
+if (_spider) {
+  _spider.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const msg = _spiderMsgs[Math.floor(Math.random() * _spiderMsgs.length)];
+    _bubble.textContent = msg;
+    _bubble.style.left  = Math.min(e.clientX + 14, window.innerWidth - 300) + 'px';
+    _bubble.style.top   = (e.clientY + 12) + 'px';
+    _bubble.style.opacity = '1';
+    clearTimeout(_tid);
+    _tid = setTimeout(() => { _bubble.style.opacity = '0'; }, 3000);
+  });
+}
+
+// ── Konami code easter egg ─────────────────────────────────────────────────
+// Up Up Down Down Left Right Left Right B A → unlock cat mode
+const _konami = [38,38,40,40,37,39,37,39,66,65];
+let _ki = 0;
+document.addEventListener('keydown', (e) => {
+  if (e.keyCode === _konami[_ki]) {
+    _ki++;
+    if (_ki === _konami.length) {
+      _ki = 0;
+      document.body.style.animation = 'konami-flash 0.8s ease 3';
+      setTimeout(() => { document.body.style.animation = ''; }, 2500);
+      _bubble.textContent = "🐱 CAT MODE UNLOCKED\n\nMeow. All packets are now paw-sitive.\nFPR = 0.00% (cats don't lie)";
+      _bubble.style.left  = '50%';
+      _bubble.style.top   = '50%';
+      _bubble.style.transform = 'translate(-50%,-50%)';
+      _bubble.style.fontSize  = '0.9rem';
+      _bubble.style.opacity   = '1';
+      _bubble.style.background = '#0d1628';
+      _bubble.style.border    = '2px solid #0ffa9e';
+      _bubble.style.color     = '#0ffa9e';
+      clearTimeout(_tid);
+      _tid = setTimeout(() => {
+        _bubble.style.opacity   = '0';
+        _bubble.style.transform = '';
+      }, 5000);
+    }
+  } else { _ki = 0; }
+});
+</script>
 """, unsafe_allow_html=True)
 
 # ===========================================================================
@@ -871,6 +1160,27 @@ with st.sidebar:
             "Click **🔁 Retrain** to fix permanently."
         )
 
+    # ── Cat wisdom widget at sidebar bottom ────────────────────────────
+    st.divider()
+    _cat_tips = [
+        ("🐱 Cat's Tip:", "Never trust a packet that arrives at 3 AM asking for root access."),
+        ("🐱 Cat's Tip:", "If it looks like a hairball in your logs, it probably is ransomware."),
+        ("🐱 Cat's Tip:", "I knocked your threshold off the desk. You're welcome. 0.29 now."),
+        ("🐱 Cat's Tip:", "Purring = normal traffic. Hissing = anomaly. Simple IDS, really."),
+        ("🐱 Cat's Tip:", "I watched the cursor for 3 hours and detected zero intrusions. Hire me."),
+        ("🐱 Cat's Tip:", "The real attack was the packets we captured along the way. 🐾"),
+        ("🐱 Cat's Tip:", "Always land on your paws. Also your ROC curve should look like one."),
+    ]
+    _ct = _cat_tips[_random.randint(0, len(_cat_tips) - 1)]
+    st.markdown(f"""
+<div style="background:rgba(0,217,245,0.04);border:1px solid rgba(0,217,245,0.1);
+  border-radius:10px;padding:12px 14px;margin-top:4px;">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;
+    color:#0ffa9e;letter-spacing:0.08em;margin-bottom:5px;">{_ct[0]}</div>
+  <div style="font-family:'Sora',sans-serif;font-size:0.78rem;color:#6b7a99;
+    line-height:1.5;font-style:italic;">"{_ct[1]}"</div>
+</div>""", unsafe_allow_html=True)
+
 # ===========================================================================
 # SESSION STATE INITIALISATION
 # BUG 5 FIX: all results persisted in session_state so tab2/tab3 can access
@@ -944,7 +1254,9 @@ with tab1:
                 st.write(f"y=0 (benign): {int((y_binary==0).sum()):,}   "
                          f"y=1 (attack): {int((y_binary==1).sum()):,}")
 
-        run_btn = st.button("🚀 Run Detection", type="primary", use_container_width=True)
+        run_btn = st.button("🚀 Run Detection", type="primary", use_container_width=True,
+                           help="Click to unleash the neural net on your network flows. "
+                                "The spider, ghost, and cat are all on standby. 🕷️👻🐱")
 
         if run_btn:
             with st.spinner("Loading model…"):
@@ -1128,7 +1440,16 @@ with tab1:
                         st.stop()
 
             # ── Batched prediction (avoids OOM on large files) ──────────────
-            _pred_prog = st.progress(0, text="Starting scan…")
+            _scan_msgs = [
+                "🕷️ Spider weaving detection threads…",
+                "👻 Ghost checking your packets from the afterlife…",
+                "🐱 Cat watching the network — very judgementally…",
+                "🧠 Neural net doing its thing (please hold)…",
+                "🔍 Scanning… (the spider said it already found something suspicious)…",
+                "⚡ Autoencoder reconstructing your reality…",
+                "🎯 Hunting anomalies like a cat hunts a laser dot…",
+            ]
+            _pred_prog = st.progress(0, text=_scan_msgs[_random.randint(0, len(_scan_msgs)-1)])
             try:
                 preds, shap_vals, X_clean, y_clean = _batch_predict(
                     model, X, _pred_prog, y_binary=y_binary
@@ -1828,7 +2149,7 @@ st.markdown("""
       box-shadow:0 0 6px #0ffa9e;"></div>
     <span style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;
       color:#6b7a99;letter-spacing:0.06em;">
-      HYBRID IDS v5.0 &nbsp;·&nbsp; AUTOENCODER + SSA-LSTM &nbsp;·&nbsp; LOF · SMOTE · SHAP
+      🐱 HYBRID IDS v5.0 &nbsp;·&nbsp; AUTOENCODER + SSA-LSTM &nbsp;·&nbsp; LOF · SMOTE · SHAP &nbsp;·&nbsp; 🕷️ Spider-patrolled &nbsp;·&nbsp; 👻 Ghost-certified
     </span>
   </div>
   <a href="https://github.com/0xc1GenZ/hybrid-ids-framework"
