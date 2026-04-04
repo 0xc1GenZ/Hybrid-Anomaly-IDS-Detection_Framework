@@ -55,7 +55,7 @@ Local Setup (without Docker)
 Bashpython -m venv venv
 source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-streamlit run dashboard.py
+streamlit run dashboard.py or executing run_dashboard.bat 
 Streamlit Dashboard → http://localhost:8501
 Flask API → http://localhost:5000
 
