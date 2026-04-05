@@ -6,17 +6,6 @@ Run from the project root:
 
 Compatible with hybrid_ids.py, preprocessor.py, autoencoder.py,
 lstm_classifier.py, shap_explainer.py (all in src/).
-
-Bugs fixed vs original:
-  BUG 1  — Wrong import path → sys.path injection so sibling modules resolve.
-  BUG 2  — model.load() / model.save() don't exist → joblib + TF SavedModel helpers.
-  BUG 3  — model.fit(df) passed the raw df (Label column included) → split X/y first.
-  BUG 4  — st.stop() inside tab1 blocked tab2/tab3 from ever rendering → guard moved.
-  BUG 5  — preds/shap_values/flagged_mask defined inside tab1 but used in tab2/tab3
-           → st.session_state used to persist results across tabs.
-  BUG 6  — Hardcoded "98.7%" metrics → computed live from real predictions + ground truth.
-  BUG 7  — shap_values[0] treated as (samples, features) but KernelExplainer returns
-           (2, samples, features) for binary classifiers → proper normalisation applied.
 """
 
 import sys
@@ -608,157 +597,6 @@ st.set_page_config(
 
 import random as _random
 
-# ===========================================================================
-# ANIMATED LOADING DISPLAY HELPERS
-# ===========================================================================
-
-def _show_model_loader(status_placeholder, phase: str = "loading"):
-    """
-    Inject a full animated loading card into a st.empty() placeholder.
-    phase = 'loading' | 'training' | 'scanning'
-    """
-    _configs = {
-        "loading": {
-            "title":    "LOADING SAVED MODEL",
-            "subtitle": "Deserialising weights from disk",
-            "color":    "#00d9f5",
-            "glow":     "rgba(0,217,245,0.35)",
-            "icon":     "🔒",
-            "steps":    ["Reading meta.joblib", "Loading autoencoder.keras", "Restoring LSTM weights", "Rebuilding preprocessor"],
-            "mascot":   "👻  Ghost: 'I kept the model warm for you...'",
-        },
-        "training": {
-            "title":    "TRAINING HYBRID MODEL",
-            "subtitle": "Autoencoder · LOF · SMOTE · LSTM",
-            "color":    "#0ffa9e",
-            "glow":     "rgba(15,250,158,0.35)",
-            "icon":     "🧠",
-            "steps":    ["Preprocessing flows", "Fitting LOF outlier filter", "Training Autoencoder (benign-only)", "Balancing classes with SMOTE", "Training LSTM classifier", "Building SHAP explainer"],
-            "mascot":   "🕷️  Spider: 'Spinning a web of neurons...'",
-        },
-        "scanning": {
-            "title":    "SCANNING NETWORK FLOWS",
-            "subtitle": "AE reconstruction · LSTM probability · Hybrid scoring",
-            "color":    "#f5a623",
-            "glow":     "rgba(245,166,35,0.35)",
-            "icon":     "🔍",
-            "steps":    ["Preprocessing batch", "Computing AE reconstruction error", "Running LSTM on all flows", "Blending hybrid scores", "Aligning labels", "Optimising threshold via ROC"],
-            "mascot":   "🐱  Cat: 'I see suspicious packets. I always do.'",
-        },
-    }
-    cfg = _configs.get(phase, _configs["loading"])
-    c, glow, steps = cfg["color"], cfg["glow"], cfg["steps"]
-
-    # Build step rows
-    step_html = ""
-    for i, s in enumerate(steps):
-        delay = i * 0.18
-        step_html += f"""
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;
-  opacity:0;animation:step-appear 0.4s ease {delay:.2f}s forwards;">
-  <div style="width:6px;height:6px;border-radius:50%;background:{c};
-    box-shadow:0 0 6px {c};flex-shrink:0;
-    animation:node-pulse 1.4s ease-in-out {delay:.2f}s infinite;"></div>
-  <span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#6b7a99;">
-    {s}</span>
-</div>"""
-
-    # Matrix rain characters for background
-    import random as _r
-    chars = "01アイウエオABCDEF∇⊕⊗∴∵"
-    rain_html = ""
-    for col in range(8):
-        x = col * 12.5
-        char_col = "".join([f'<div style="animation:matrix-fall {_r.uniform(1.2,2.5):.1f}s linear {_r.uniform(0,2):.1f}s infinite;opacity:0;">'
-                            + _r.choice(chars) + '</div>' for _ in range(6)])
-        rain_html += f"""<div style="position:absolute;left:{x}%;top:0;
-          font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:{c};
-          opacity:0.15;display:flex;flex-direction:column;gap:6px;pointer-events:none;">
-          {char_col}</div>"""
-
-    html = f"""
-<div id="ids-loader-{phase}" style="
-  background:linear-gradient(135deg,#0a0f1c 0%,#0d1628 60%,#0a1422 100%);
-  border:1px solid {c}33;border-radius:16px;padding:28px 28px 24px;
-  margin:8px 0;position:relative;overflow:hidden;
-  animation:glow-pulse 2s ease-in-out infinite;
-">
-  <!-- Matrix rain bg -->
-  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
-    {rain_html}
-  </div>
-
-  <!-- Top accent bar -->
-  <div style="position:absolute;top:0;left:0;right:0;height:3px;
-    background:linear-gradient(90deg,{c},{c}88,{c});
-    animation:bar-fill 0.6s ease forwards;"></div>
-
-  <!-- Header row -->
-  <div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;
-    position:relative;z-index:1;">
-
-    <!-- Radar circle -->
-    <div style="position:relative;width:72px;height:72px;flex-shrink:0;">
-      <!-- Outer ring -->
-      <div style="position:absolute;inset:0;border-radius:50%;
-        border:1px solid {c}44;"></div>
-      <!-- Mid ring -->
-      <div style="position:absolute;inset:8px;border-radius:50%;
-        border:1px solid {c}33;"></div>
-      <!-- Inner dot -->
-      <div style="position:absolute;inset:28px;border-radius:50%;
-        background:{c};box-shadow:0 0 12px {glow};
-        animation:node-pulse 1.2s ease-in-out infinite;"></div>
-      <!-- Sweep arm -->
-      <div style="position:absolute;inset:0;border-radius:50%;
-        animation:radar-sweep 1.8s linear infinite;overflow:hidden;">
-        <div style="position:absolute;top:50%;left:50%;width:50%;height:1.5px;
-          background:linear-gradient(90deg,{c},{c}00);transform-origin:left center;
-          transform:translateY(-50%);"></div>
-      </div>
-      <!-- Orbit dot -->
-      <div style="position:absolute;top:50%;left:50%;
-        width:6px;height:6px;border-radius:50%;margin:-3px;
-        background:#fff;box-shadow:0 0 6px {glow};
-        animation:orbit 2s linear infinite;"></div>
-      <!-- Icon -->
-      <div style="position:absolute;inset:0;display:flex;align-items:center;
-        justify-content:center;font-size:1.4rem;z-index:2;">{cfg["icon"]}</div>
-    </div>
-
-    <!-- Title + steps -->
-    <div style="flex:1;">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;
-        letter-spacing:0.14em;text-transform:uppercase;color:#6b7a99;margin-bottom:4px;">
-        ◈ SYSTEM OPERATION</div>
-      <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.1rem;
-        color:{c};letter-spacing:-0.01em;margin-bottom:3px;">
-        {cfg["title"]}<span style="animation:blink 1s step-end infinite;">█</span></div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;
-        color:#6b7a99;margin-bottom:14px;">{cfg["subtitle"]}</div>
-      {step_html}
-    </div>
-  </div>
-
-  <!-- Mascot quip -->
-  <div style="position:relative;z-index:1;padding:9px 14px;
-    background:rgba(0,0,0,0.25);border-radius:8px;
-    border-left:2px solid {c}66;">
-    <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;
-      color:#6b7a99;font-style:italic;">{cfg["mascot"]}</span>
-  </div>
-
-  <style>
-    @keyframes step-appear {{
-      from {{ opacity:0; transform:translateX(-8px); }}
-      to   {{ opacity:1; transform:translateX(0);    }}
-    }}
-  </style>
-</div>"""
-
-    status_placeholder.markdown(html, unsafe_allow_html=True)
-
-
 _CYBER_QUOTES = [
     ("There are only two types of companies:", "those that have been hacked,\nand those that don't know it yet. 👻", "— John Chambers, Cisco"),
     ("Why did the hacker break up?", "Too many trust issues — just like our SSL certs. 💔", "— Anonymous SOC Analyst"),
@@ -919,50 +757,6 @@ hr { border:none !important; border-top:1px solid var(--border-dim) !important; 
 h2,h3 { font-family:'Sora',sans-serif !important; font-weight:700 !important; }
 [data-testid="stSidebar"] h2,[data-testid="stSidebar"] h3 {
   font-family:'Sora',sans-serif !important; font-weight:700 !important;
-}
-
-/* ══════════════════════════════════════════════
-   ANIMATED LOADING OVERLAYS
-   ══════════════════════════════════════════════ */
-
-/* Neural network node pulse ring */
-@keyframes node-pulse {
-  0%,100% { transform:scale(1);   opacity:1;   }
-  50%      { transform:scale(1.6); opacity:0.3; }
-}
-/* Radar sweep */
-@keyframes radar-sweep {
-  from { transform:rotate(0deg); }
-  to   { transform:rotate(360deg); }
-}
-/* Data stream scrolling text */
-@keyframes data-scroll {
-  0%   { transform:translateY(0); }
-  100% { transform:translateY(-50%); }
-}
-/* Neon glow pulse on loader container */
-@keyframes glow-pulse {
-  0%,100% { box-shadow:0 0 20px rgba(0,217,245,0.2), inset 0 0 20px rgba(0,217,245,0.03); }
-  50%     { box-shadow:0 0 40px rgba(0,217,245,0.45), inset 0 0 30px rgba(0,217,245,0.07); }
-}
-/* Orbit ring */
-@keyframes orbit {
-  from { transform:rotate(0deg) translateX(38px) rotate(0deg); }
-  to   { transform:rotate(360deg) translateX(38px) rotate(-360deg); }
-}
-/* Step bar fill */
-@keyframes bar-fill {
-  from { width:0%; }
-  to   { width:100%; }
-}
-/* Typewriter blink */
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-/* Float up fade for matrix chars */
-@keyframes matrix-fall {
-  0%   { transform:translateY(-20px); opacity:0; }
-  10%  { opacity:1; }
-  90%  { opacity:0.4; }
-  100% { transform:translateY(120px); opacity:0; }
 }
 
 /* ══════════════════════════════════════════════
@@ -1454,34 +1248,20 @@ with tab1:
                                 "The spider, ghost, and cat are all on standby. 🕷️👻🐱")
 
         if run_btn:
-            _load_ph = st.empty()
-            force_retrain = st.session_state.get("force_retrain") or False
-            if _model_on_disk() and not force_retrain:
-                _show_model_loader(_load_ph, phase="loading")
-                try:
-                    model = _load_model()
-                    _load_ph.empty()
-                    st.markdown("""
-<div style="display:flex;align-items:center;gap:10px;padding:12px 18px;
-  background:rgba(15,250,158,0.08);border:1px solid rgba(15,250,158,0.3);
-  border-radius:10px;">
-  <span style="font-size:1.2rem;">✅</span>
-  <div>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;
-      color:#0ffa9e;font-weight:600;">SAVED MODEL LOADED</div>
-    <div style="font-family:'Sora',sans-serif;font-size:0.74rem;color:#6b7a99;">
-      Weights restored · Ready to scan</div>
-  </div>
-</div>""", unsafe_allow_html=True)
-                except Exception as e:
-                    _load_ph.empty()
-                    st.warning(f"Failed to load saved model ({e}). Re-training…")
+            with st.spinner("Loading model…"):
+                force_retrain = st.session_state.get("force_retrain") or False
+                if _model_on_disk() and not force_retrain:
+                    try:
+                        model = _load_model()
+                        st.success("✅ Saved model loaded from disk")
+                    except Exception as e:
+                        st.warning(f"Failed to load saved model ({e}). Re-training…")
+                        model = None
+                else:
+                    if force_retrain:
+                        st.info("🔁 Force retrain — fresh model will be trained on this file")
+                        st.session_state["force_retrain"] = None
                     model = None
-            else:
-                if force_retrain:
-                    st.info("🔁 Force retrain — fresh model will be trained on this file")
-                    st.session_state["force_retrain"] = None
-                model = None
 
             if model is None:
                 # ── Determine training mode and y_for_fit ────────────────────
@@ -1602,30 +1382,19 @@ with tab1:
                     else None
                 )
 
-                _train_ph = st.empty()
-                _show_model_loader(_train_ph, phase="training")
-                try:
-                    model = HybridIDS()
-                    model.fit(X, _y_for_fit)
-                    _save_model(model)
-                    _train_ph.empty()
-                    _mode_label = (
-                        "supervised" if _y_for_fit is not None else "unsupervised"
-                    )
-                    _detail = "LSTM + Autoencoder" if _y_for_fit is not None else "Autoencoder anomaly scoring only"
-                    _success_html = (
-                        f'<div style="display:flex;align-items:center;gap:10px;padding:12px 18px;'
-                        f'background:rgba(15,250,158,0.08);border:1px solid rgba(15,250,158,0.3);'
-                        f'border-radius:10px;">'
-                        f'<span style="font-size:1.2rem;">🧠</span>'
-                        f'<div><div style="font-family:JetBrains Mono,monospace;font-size:0.78rem;'
-                        f'color:#0ffa9e;font-weight:600;">MODEL TRAINED — {_mode_label.upper()} MODE</div>'
-                        f'<div style="font-size:0.74rem;color:#6b7a99;">{_detail}</div>'
-                        f'</div></div>'
-                    )
-                    st.markdown(_success_html, unsafe_allow_html=True)
-                    _train_ph.empty()
-                except Exception as e:
+                with st.spinner("Training model on uploaded data…"):
+                    try:
+                        model = HybridIDS()
+                        model.fit(X, _y_for_fit)
+                        _save_model(model)
+                        _mode_label = (
+                            "supervised" if _y_for_fit is not None else "unsupervised"
+                        )
+                        st.success(
+                            f"✅ Model trained and saved — **{_mode_label} mode**  \n"
+                            f"({'LSTM + AE' if _y_for_fit is not None else 'AE anomaly scoring only'})"
+                        )
+                    except Exception as e:
                         err_str = str(e).lower()
                         if "len() of unsized" in err_str or "iteration over a 0-d" in err_str:
                             st.error(
@@ -1660,56 +1429,25 @@ with tab1:
                         st.stop()
 
             # ── Batched prediction (avoids OOM on large files) ──────────────
-            # ── Animated scan card ───────────────────────────────────────
-            _scan_ph   = st.empty()
-            _scan_prog = st.empty()
-            _show_model_loader(_scan_ph, phase="scanning")
-            _prog_bar  = _scan_prog.progress(0, text="⚡ Initialising scan pipeline…")
+            _scan_msgs = [
+                "🕷️ Spider weaving detection threads…",
+                "👻 Ghost checking your packets from the afterlife…",
+                "🐱 Cat watching the network — very judgementally…",
+                "🧠 Neural net doing its thing (please hold)…",
+                "🔍 Scanning… (the spider said it already found something suspicious)…",
+                "⚡ Autoencoder reconstructing your reality…",
+                "🎯 Hunting anomalies like a cat hunts a laser dot…",
+            ]
+            _pred_prog = st.progress(0, text=_scan_msgs[_random.randint(0, len(_scan_msgs)-1)])
             try:
                 preds, shap_vals, X_clean, y_clean = _batch_predict(
-                    model, X, _prog_bar, y_binary=y_binary
+                    model, X, _pred_prog, y_binary=y_binary
                 )
             except Exception as e:
-                _scan_ph.empty()
-                _scan_prog.empty()
+                _pred_prog.empty()
                 st.error(f"Prediction failed: {e}")
                 st.stop()
-            _scan_ph.empty()
-            _scan_prog.empty()
-
-            # ── Scan complete celebration card ───────────────────────────────
-            _n_flagged_pre = int(sum(1 for p in preds if p > 0.5))
-            _pct_flagged   = _n_flagged_pre / max(len(preds), 1) * 100
-            _flag_color    = "#ff4560" if _pct_flagged > 10 else ("#f5a623" if _pct_flagged > 2 else "#0ffa9e")
-            _status_txt    = ("⚠️ HIGH THREAT ACTIVITY" if _pct_flagged > 10
-                              else ("🔶 MODERATE ANOMALIES" if _pct_flagged > 2
-                              else "✅ MOSTLY NORMAL TRAFFIC"))
-            st.markdown(f"""
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:4px 0 12px;">
-  <div style="background:rgba(0,217,245,0.07);border:1px solid rgba(0,217,245,0.2);
-    border-radius:10px;padding:14px 16px;text-align:center;">
-    <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;
-      color:#6b7a99;text-transform:uppercase;letter-spacing:0.1em;">Flows Scanned</div>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;
-      font-weight:700;color:#00d9f5;margin-top:4px;">{len(preds):,}</div>
-  </div>
-  <div style="background:rgba({("255,69,96" if _pct_flagged>10 else ("245,166,35" if _pct_flagged>2 else "15,250,158"))},0.07);
-    border:1px solid rgba({("255,69,96" if _pct_flagged>10 else ("245,166,35" if _pct_flagged>2 else "15,250,158"))},0.22);
-    border-radius:10px;padding:14px 16px;text-align:center;">
-    <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;
-      color:#6b7a99;text-transform:uppercase;letter-spacing:0.1em;">Flagged</div>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;
-      font-weight:700;color:{_flag_color};margin-top:4px;">{_n_flagged_pre:,}</div>
-  </div>
-  <div style="background:rgba(15,250,158,0.05);border:1px solid rgba(15,250,158,0.15);
-    border-radius:10px;padding:14px 16px;text-align:center;">
-    <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;
-      color:#6b7a99;text-transform:uppercase;letter-spacing:0.1em;">Verdict</div>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;
-      font-weight:700;color:{_flag_color};margin-top:8px;line-height:1.3;">
-      {_status_txt}</div>
-  </div>
-</div>""", unsafe_allow_html=True)
+            _pred_prog.empty()
 
             # ── Guard: empty preds ───────────────────────────────────────────
             if len(preds) == 0:
@@ -1764,23 +1502,8 @@ with tab1:
             # the project target while maximising recall.
             roc_data = None
             if auto_threshold and y_clean is not None:
-                _thr_ph = st.empty()
-                _thr_ph.markdown("""
-<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;
-  background:rgba(0,217,245,0.06);border:1px solid rgba(0,217,245,0.18);
-  border-radius:10px;">
-  <div style="width:14px;height:14px;border-radius:50%;
-    border:2px solid #00d9f5;border-top-color:transparent;
-    animation:radar-sweep 0.8s linear infinite;flex-shrink:0;"></div>
-  <div>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;
-      color:#00d9f5;font-weight:600;">COMPUTING OPTIMAL THRESHOLD</div>
-    <div style="font-family:'Sora',sans-serif;font-size:0.7rem;color:#6b7a99;">
-      ROC curve · Youden-J · FPR &lt; 5% constraint</div>
-  </div>
-</div>""", unsafe_allow_html=True)
-                best_thr, roc_data = _find_optimal_threshold(y_clean, preds)
-                _thr_ph.empty()
+                with st.spinner("Optimising decision threshold via ROC curve…"):
+                    best_thr, roc_data = _find_optimal_threshold(y_clean, preds)
                 roc_data["is_inverted"] = is_inverted
                 active_threshold = best_thr
                 est_acc = roc_data.get("est_accuracy", 0)
