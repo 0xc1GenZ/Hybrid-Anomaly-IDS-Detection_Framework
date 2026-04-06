@@ -163,4 +163,7 @@ All researchers whose work on CIC datasets and hybrid IDS inspired this project
 Made with ❤️ for real-world cybersecurity
 
 🎞️Live Demonstration Video!🔴REC
-https://github.com/user-attachments/assets/478757b9-befa-4c03-9772-820dd8e1769f
+
+https://github.com/user-attachments/assets/db526a05-f98c-411e-9052-c2c596fcea45
+
+
