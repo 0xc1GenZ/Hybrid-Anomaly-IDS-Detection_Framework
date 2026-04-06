@@ -6,17 +6,6 @@ Run from the project root:
 
 Compatible with hybrid_ids.py, preprocessor.py, autoencoder.py,
 lstm_classifier.py, shap_explainer.py (all in src/).
-
-Bugs fixed vs original:
-  BUG 1  — Wrong import path → sys.path injection so sibling modules resolve.
-  BUG 2  — model.load() / model.save() don't exist → joblib + TF SavedModel helpers.
-  BUG 3  — model.fit(df) passed the raw df (Label column included) → split X/y first.
-  BUG 4  — st.stop() inside tab1 blocked tab2/tab3 from ever rendering → guard moved.
-  BUG 5  — preds/shap_values/flagged_mask defined inside tab1 but used in tab2/tab3
-           → st.session_state used to persist results across tabs.
-  BUG 6  — Hardcoded "98.7%" metrics → computed live from real predictions + ground truth.
-  BUG 7  — shap_values[0] treated as (samples, features) but KernelExplainer returns
-           (2, samples, features) for binary classifiers → proper normalisation applied.
 """
 
 import sys
