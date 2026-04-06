@@ -1,4 +1,6 @@
-🍿Live Demonstrations!🍿
+--📝Take a quick look at /docs -> README file for more details--
+
+Live Demonstrations!🍿
 
 🔴REC
 
