@@ -101,6 +101,7 @@ texthybrid-ids-framework/
 │   └── ...
 ├── models/               # Saved models (scaler, LOF, LSTM, etc.)
 ├── results/              # SHAP plots, metrics, confusion matrix
+|── docs/                 # Documentaion Papers
 ├── notebooks/            # EDA and experiments
 ├── logs/                 # Production run logs
 ├── .streamlit/           # Streamlit config
