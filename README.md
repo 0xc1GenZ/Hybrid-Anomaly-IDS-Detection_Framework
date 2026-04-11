@@ -1,4 +1,4 @@
-# Hybrid Anomaly-Based Intrusion Detection Framework 🛡️
+#Hybrid Anomaly-Based Intrusion Detection Framework 🛡️
 
 **A Hybrid Deep Learning Framework for Anomaly-Based Intrusion Detection Systems (IDS)**
 
