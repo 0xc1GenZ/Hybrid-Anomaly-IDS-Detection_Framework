@@ -1,6 +1,6 @@
-# Hybrid Anomaly-Based Intrusion Detection Framework🛡️
+# Hybrid Anomaly-Based Intrusion Detection Framework
 
-**A Hybrid Deep Learning Framework for Anomaly-Based Intrusion Detection Systems (IDS)**
+**A Hybrid Deep Learning Framework for Anomaly-Based Intrusion Detection Systems (IDS)🛡️**
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange.svg)](https://www.tensorflow.org/)
